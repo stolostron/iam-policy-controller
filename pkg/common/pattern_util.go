@@ -24,7 +24,7 @@ func IfMatch(name string, included, excluded []string) bool {
 // MatchNames matches names
 func MatchNames(all, included, excluded []string) []string {
 
-	glog.V(6).Infof("MatchNames all = %v, included = %v, excluded = %v", all, included, excluded)
+	glog.V(6).Infof("Found MatchNames all = %v, included = %v, excluded = %v", all, included, excluded)
 	//list of included
 	includedNames := []string{}
 	for _, value := range included {

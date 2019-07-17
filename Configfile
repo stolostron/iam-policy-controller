@@ -14,7 +14,7 @@ VERSION ?= latest
 
 # Image settings
 DOCKER_REGISTRY ?= hyc-cloud-private-scratch-docker-local.artifactory.swg-devops.com
-DOCKER_NAMESPACE ?= rranjann
+DOCKER_NAMESPACE ?= ibmcom
 DOCKER_IMAGE ?= $(APP_NAME)-$(ARCH)
 DOCKER_BUILD_TAG ?= $(VERSION)-$(GIT_COMMIT)
 DOCKER_BUILD_TAG_RHEL ?= $(DOCKER_BUILD_TAG)-rhel
@@ -24,7 +24,3 @@ DOCKER_BUILD_DIR := $(TRAVIS_BUILD_DIR)
 # Go build settings
 GOARCH := $(ARCH)
 GOOS := linux
-
-# Metadata
-#SUMMARY := Watches certificates to ensure compliance.
-#IMAGE_DESCRIPTION := A controller that watches certificates within ICP to ensure they meet compliance standards.

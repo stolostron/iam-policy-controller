@@ -36,11 +36,13 @@ jobs:
     - stage: test
       os: linux
       script:
+        - make dependencies
         - make test
     - stage: build
       os: linux
       script:
         - make init
+        - make dependencies
         - make build
         - make image
         - make docker:login
@@ -51,6 +53,7 @@ jobs:
       os: linux-ppc64le
       script:
         - make init
+        - make dependencies
         - make build
         - make image
         - make docker:login
@@ -59,6 +62,7 @@ jobs:
       os: linux-s390
       script:
         - make init
+        - make dependencies
         - make build
         - make image
         - make docker:login

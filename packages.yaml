@@ -3,6 +3,5 @@ repo1:
   url: "http://registry.access.redhat.com/ubi7/ubi-minimal"
   packages: [
     "shadow-utils",
-    "bind-utils",
     "procps"
   ]

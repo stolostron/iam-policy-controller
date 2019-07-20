@@ -11,5 +11,4 @@ spec:
   #labelSelector:
     #env: "production"
   remediationAction: enforce # enforce or inform
-  maxRoleBindingUsersPerNamespace: 20
-  
+  maxClusterRoleBindingUsers: 5

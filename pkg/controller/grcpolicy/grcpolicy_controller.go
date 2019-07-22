@@ -362,7 +362,7 @@ func checkViolationsPerNamespace(roleBindingList *v1.RoleBindingList, plc *mcmv1
 
 func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, namespace string) bool {
 	changed := false
-	msg := fmt.Sprintf("%s violations detected in namespace `%s`, there are %v users violations", fmt.Sprint(userCount), namespace, userCount)
+	msg := fmt.Sprintf("%s clusterrole admin users violations detected in namespace `%s` ", fmt.Sprint(userCount), namespace)
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
 	}

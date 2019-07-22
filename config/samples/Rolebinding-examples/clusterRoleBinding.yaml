@@ -15,6 +15,12 @@ subjects:
 - kind: User
   name: guss
   apiGroup: rbac.authorization.k8s.io
+- kind: User
+  name: priya
+  apiGroup: rbac.authorization.k8s.io
+- kind: User
+  name: ravi
+  apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: ClusterRole
   name: example-clusterrole

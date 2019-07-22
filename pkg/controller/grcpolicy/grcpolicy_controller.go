@@ -261,12 +261,12 @@ func PeriodicallyExecGRCPolicies(freq uint) {
 				glog.Errorf("reason: communication error, subject: k8s API server, namespace: %v, according to policy: %v, additional-info: %v\n", namespace, policy.Name, err)
 				continue
 			}
-			userViolationCount, GroupViolationCount := checkViolationsPerNamespace(roleBindingList, policy, namespace)
+			userViolationCount := checkViolationsPerNamespace(roleBindingList, policy, namespace)
 			if strings.ToLower(string(policy.Spec.RemediationAction)) == strings.ToLower(string(mcmv1alpha1.Enforce)) {
 				glog.V(5).Infof("Enforce is set, but ignored :-)")
 			}
 
-			if addViolationCount(policy, userViolationCount, GroupViolationCount, namespace) {
+			if addViolationCount(policy, userViolationCount, namespace) {
 				plcToUpdateMap[policy.Name] = policy
 			}
 			checkComplianceBasedOnDetails(policy)
@@ -306,17 +306,14 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*mcmv1alpha1.IamPolicy)
 		return err
 	}
 
-	clusterLevelUsers, clusterLevelGroups := checkAllClusterLevel(ClusteRoleBindingList)
+	clusterLevelUsers := checkAllClusterLevel(ClusteRoleBindingList)
 
 	for _, policy := range plcMap {
-		var userViolationCount, groupViolationCount int
+		var userViolationCount int
 		if policy.Spec.MaxClusterRoleBindingUsers < clusterLevelUsers && policy.Spec.MaxClusterRoleBindingUsers >= 0 {
 			userViolationCount = clusterLevelUsers - policy.Spec.MaxClusterRoleBindingUsers
 		}
-		if policy.Spec.MaxClusterRoleBindingGroups < clusterLevelGroups && policy.Spec.MaxClusterRoleBindingGroups >= 0 {
-			groupViolationCount = clusterLevelGroups - policy.Spec.MaxClusterRoleBindingGroups
-		}
-		if addViolationCount(policy, userViolationCount, groupViolationCount, "cluster-wide") {
+		if addViolationCount(policy, userViolationCount, "cluster-wide") {
 			plcToUpdateMap[policy.Name] = policy
 		}
 		checkComplianceBasedOnDetails(policy)
@@ -325,21 +322,17 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*mcmv1alpha1.IamPolicy)
 	return nil
 }
 
-func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (userV, groupV int) {
+func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (userV int) {
 
 	usersMap := make(map[string]bool)
-	groupsMap := make(map[string]bool)
 	for _, clusterRoleBinding := range clusterRoleBindingList.Items {
 		for _, subject := range clusterRoleBinding.Subjects {
 			if subject.Kind == "User" {
 				usersMap[subject.Name] = true
 			}
-			if subject.Kind == "Group" {
-				groupsMap[subject.Name] = true
-			}
 		}
 	}
-	return len(usersMap), len(groupsMap)
+	return len(usersMap)
 }
 
 func convertMaptoPolicyNameKey() map[string]*mcmv1alpha1.IamPolicy {
@@ -350,33 +343,26 @@ func convertMaptoPolicyNameKey() map[string]*mcmv1alpha1.IamPolicy {
 	return plcMap
 }
 
-func checkViolationsPerNamespace(roleBindingList *v1.RoleBindingList, plc *mcmv1alpha1.IamPolicy, namespace string) (userV, groupV int) {
+func checkViolationsPerNamespace(roleBindingList *v1.RoleBindingList, plc *mcmv1alpha1.IamPolicy, namespace string) (userV int) {
 
 	usersMap := make(map[string]bool)
-	groupsMap := make(map[string]bool)
 	for _, roleBinding := range roleBindingList.Items {
 		for _, subject := range roleBinding.Subjects {
 			if subject.Kind == "User" {
 				usersMap[subject.Name] = true
 			}
-			if subject.Kind == "Group" {
-				groupsMap[subject.Name] = true
-			}
 		}
 	}
-	var userViolationCount, groupViolationCount int
+	var userViolationCount int
 	if plc.Spec.MaxRoleBindingUsersPerNamespace < len(usersMap) && plc.Spec.MaxRoleBindingUsersPerNamespace >= 0 {
 		userViolationCount = (len(usersMap) - plc.Spec.MaxRoleBindingUsersPerNamespace)
 	}
-	if plc.Spec.MaxRoleBindingGroupsPerNamespace < len(groupsMap) && plc.Spec.MaxRoleBindingGroupsPerNamespace >= 0 {
-		groupViolationCount = (len(groupsMap) - plc.Spec.MaxRoleBindingGroupsPerNamespace)
-	}
-	return userViolationCount, groupViolationCount
+	return userViolationCount
 }
 
-func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, groupCount int, namespace string) bool {
+func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, namespace string) bool {
 	changed := false
-	msg := fmt.Sprintf("%s violations detected in namespace `%s`, there are %v users violations and %v groups violations", fmt.Sprint(userCount+groupCount), namespace, userCount, groupCount)
+	msg := fmt.Sprintf("%s clusterrole admin users violations detected in namespace `%s` ", fmt.Sprint(userCount), namespace)
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
 	}
@@ -394,7 +380,7 @@ func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, groupCount int
 	}
 	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
 	if len(firstNum) > 0 {
-		if firstNum[0] == fmt.Sprint(userCount+groupCount) {
+		if firstNum[0] == fmt.Sprint(userCount) {
 			return false
 		}
 	}
@@ -576,7 +562,7 @@ func createParentPolicyEvent(instance *mcmv1alpha1.IamPolicy) {
 
 	parentPlc := createParentPolicy(instance)
 
-	reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+	reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal, fmt.Sprintf("Policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 }
 
 func createParentPolicy(instance *mcmv1alpha1.IamPolicy) mcmv1alpha1.Policy {

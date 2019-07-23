@@ -112,14 +112,14 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileGRCPolicy{
 		Client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder("IamPolicy-controller"),
+		recorder: mgr.GetRecorder("iampolicy-controller"),
 	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("IamPolicy-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("iampolicy-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
@@ -458,7 +458,7 @@ func updatePolicyStatus(policies map[string]*mcmv1alpha1.IamPolicy) (*mcmv1alpha
 			createParentPolicyEvent(instance)
 		}
 		{ //TODO we can make this eventing enabled by a flag
-			reconcilingAgent.recorder.Event(instance, "Normal", "Policy updated", fmt.Sprintf("Policy status is: %v", instance.Status.ComplianceState))
+			reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal, fmt.Sprintf("Policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 		}
 	}
 	return nil, nil
@@ -562,7 +562,7 @@ func createParentPolicyEvent(instance *mcmv1alpha1.IamPolicy) {
 
 	parentPlc := createParentPolicy(instance)
 
-	reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal, fmt.Sprintf("Policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+	reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 }
 
 func createParentPolicy(instance *mcmv1alpha1.IamPolicy) mcmv1alpha1.Policy {

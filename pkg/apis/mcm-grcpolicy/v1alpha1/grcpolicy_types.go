@@ -47,9 +47,7 @@ type IamPolicySpec struct {
 	NamespaceSelector                Target            `json:"namespaceSelector,omitempty"` // selecting a list of namespaces where the policy applies
 	LabelSelector                    map[string]string `json:"labelSelector,omitempty"`
 	MaxRoleBindingUsersPerNamespace  int               `json:"maxRoleBindingUsersPerNamespace,omitempty"`
-	MaxRoleBindingGroupsPerNamespace int               `json:"maxRoleBindingGroupsPerNamespace,omitempty"`
 	MaxClusterRoleBindingUsers       int               `json:"maxClusterRoleBindingUsers,omitempty"`
-	MaxClusterRoleBindingGroups      int               `json:"maxClusterRoleBindingGroups,omitempty"`
 }
 
 // IamPolicyStatus defines the observed state of IamPolicy

@@ -21,5 +21,3 @@ spec:
   remediationAction: enforce # enforce or inform
   maxRoleBindingUsersPerNamespace: 2
   maxClusterRoleBindingUsers: 3
-  maxClusterRoleBindingGroups: -1
-  

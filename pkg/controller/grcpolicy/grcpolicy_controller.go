@@ -362,30 +362,32 @@ func checkViolationsPerNamespace(roleBindingList *v1.RoleBindingList, plc *mcmv1
 
 func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, namespace string) bool {
 	changed := false
-	msg := fmt.Sprintf("%s clusterrole admin users violations detected in namespace `%s` ", fmt.Sprint(userCount), namespace)
-	if plc.Status.CompliancyDetails == nil {
-		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
-	}
-	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
-		plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)
-
-	}
-	if plc.Status.CompliancyDetails[plc.Name][namespace] == nil {
-		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{}
-	}
-	if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
-		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
-		changed = true
-		return changed
-	}
-	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-	if len(firstNum) > 0 {
-		if firstNum[0] == fmt.Sprint(userCount) {
-			return false
+	if userCount > 0 {
+		msg := fmt.Sprintf("%s clusterrole admin users violations detected in namespace `%s` ", fmt.Sprint(userCount), namespace)
+		if plc.Status.CompliancyDetails == nil {
+			plc.Status.CompliancyDetails = make(map[string]map[string][]string)
 		}
+		if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
+			plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)
+
+		}
+		if plc.Status.CompliancyDetails[plc.Name][namespace] == nil {
+			plc.Status.CompliancyDetails[plc.Name][namespace] = []string{}
+		}
+		if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
+			plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
+			changed = true
+			return changed
+		}
+		firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
+		if len(firstNum) > 0 {
+			if firstNum[0] == fmt.Sprint(userCount) {
+				return false
+			}
+		}
+		plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
+		changed = true
 	}
-	plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
-	changed = true
 	return changed
 }
 
@@ -458,7 +460,7 @@ func updatePolicyStatus(policies map[string]*mcmv1alpha1.IamPolicy) (*mcmv1alpha
 			createParentPolicyEvent(instance)
 		}
 		{ //TODO we can make this eventing enabled by a flag
-			reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal, fmt.Sprintf("Policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+			reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 		}
 	}
 	return nil, nil

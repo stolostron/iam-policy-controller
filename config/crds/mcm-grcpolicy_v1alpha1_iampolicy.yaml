@@ -31,13 +31,7 @@ spec:
             labelSelector:
               description: selecting a list of namespaces where the policy applies
               type: object
-            maxClusterRoleBindingGroups:
-              format: int64
-              type: integer
             maxClusterRoleBindingUsers:
-              format: int64
-              type: integer
-            maxRoleBindingGroupsPerNamespace:
               format: int64
               type: integer
             maxRoleBindingUsersPerNamespace:

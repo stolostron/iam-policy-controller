@@ -10,5 +10,5 @@ spec:
     exclude: ["kube-system"]
   #labelSelector:
     #env: "production"
-  remediationAction: enforce # enforce or inform
+  remediationAction: inform # enforce or inform
   maxClusterRoleBindingUsers: 5

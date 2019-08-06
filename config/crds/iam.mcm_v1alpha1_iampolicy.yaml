@@ -31,8 +31,12 @@ spec:
             labelSelector:
               description: selecting a list of namespaces where the policy applies
               type: object
-            minimumDuration:
-              type: object
+            maxClusterRoleBindingUsers:
+              format: int64
+              type: integer
+            maxRoleBindingUsersPerNamespace:
+              format: int64
+              type: integer
             namespaceSelector:
               description: enforce, inform
               properties:

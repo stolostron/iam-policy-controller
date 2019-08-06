@@ -7,9 +7,9 @@ metadata:
   labels:
     env: dev
 subjects:
-#- kind: User
-#  name: matt # Name is case sensitive
-#  apiGroup: rbac.authorization.k8s.io
+- kind: User
+  name: matt # Name is case sensitive
+  apiGroup: rbac.authorization.k8s.io
 - kind: User
   name: james # Name is case sensitive
   apiGroup: rbac.authorization.k8s.io

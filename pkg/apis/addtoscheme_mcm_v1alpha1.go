@@ -7,7 +7,7 @@
 package apis
 
 import (
-	"github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/apis/mcm-grcpolicy/v1alpha1"
+	"github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/apis/iam.mcm/v1alpha1"
 )
 
 func init() {

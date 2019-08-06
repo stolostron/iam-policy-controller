@@ -1,4 +1,4 @@
-apiVersion: mcm-grcpolicy.ibm.com/v1alpha1
+apiVersion: iam.mcm.ibm.com/v1alpha1
 kind: IamPolicy
 metadata:
   name: iam-grc-policy

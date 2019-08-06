@@ -32,7 +32,7 @@ rules:
   - update
   - patch
 - apiGroups:
-  - grc-mcmpolicy.ibm.com
+  - iam.mcm.ibm.com
   resources:
   - Iampolicies
   verbs:
@@ -44,7 +44,7 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - grc-mcmpolicy.ibm.com
+  - iam.mcm.ibm.com
   resources:
   - Iampolicies/status
   verbs:

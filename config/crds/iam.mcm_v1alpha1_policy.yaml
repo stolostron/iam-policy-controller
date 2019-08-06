@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: iampolicies.iam.mcm.ibm.com
+  name: policies.iam.mcm.ibm.com
 spec:
   group: iam.mcm.ibm.com
   names:
-    kind: IamPolicy
-    plural: iampolicies
+    kind: Policy
+    plural: policies
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -26,36 +26,8 @@ spec:
           type: string
         metadata:
           type: object
-        spec:
-          properties:
-            labelSelector:
-              description: selecting a list of namespaces where the policy applies
-              type: object
-            minimumDuration:
-              type: object
-            namespaceSelector:
-              description: enforce, inform
-              properties:
-                exclude:
-                  items:
-                    type: string
-                  type: array
-                include:
-                  items:
-                    type: string
-                  type: array
-              type: object
-            remediationAction:
-              type: string
-          type: object
-        status:
-          properties:
-            compliancyDetails:
-              description: Compliant, NonCompliant, UnkownCompliancy
-              type: object
-            compliant:
-              type: string
-          type: object
+      required:
+      - metadata
   version: v1alpha1
 status:
   acceptedNames:

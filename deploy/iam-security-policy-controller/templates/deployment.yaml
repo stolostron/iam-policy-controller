@@ -1,10 +1,10 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: {{ include "controller.fullname" . }}
+  name: {{ include "controller.name" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
-    app: {{ include "controller.fullname" . }}
+    app: {{ include "controller.name" . }}
     chart: {{ include "controller.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}

@@ -1,10 +1,10 @@
-name: iam-security-policy-controller
+name: iam-policy-controller
 version: 0.0.1
 appVersion: 0.0.1
 description: A Helm chart for deploying the Certificate Policy Controller
-home: https://github.ibm.com/IBMPrivateCloud/iam-security-policy-controller
+home: https://github.ibm.com/IBMPrivateCloud/iam-policy-controller
 sources:
-  - https://github.ibm.com/IBMPrivateCloud/iam-security-policy-controller
+  - https://github.ibm.com/IBMPrivateCloud/iam-policy-controller
 keywords:
   - expiration
   - grc

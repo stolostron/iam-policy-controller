@@ -11,12 +11,12 @@ import (
 	"os"
 
 	"github.com/golang/glog"
-	"github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/apis"
-	"github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/controller"
+	"github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis"
+	"github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/controller"
 
-	common "github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/common"
-	policyStatusHandler "github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/controller/grcpolicy"
-	"github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/webhook"
+	common "github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/common"
+	policyStatusHandler "github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/controller/grcpolicy"
+	"github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/webhook"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 

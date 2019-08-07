@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/onsi/gomega"
-	"github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/apis"
+	"github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"

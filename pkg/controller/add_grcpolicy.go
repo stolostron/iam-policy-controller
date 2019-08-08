@@ -7,7 +7,7 @@
 package controller
 
 import (
-	grcpolicy "github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/controller/grcpolicy"
+	grcpolicy "github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/controller/grcpolicy"
 )
 
 func init() {

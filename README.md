@@ -1,2 +1,2 @@
-# iam-security-policy-controller
-iam-security-policy-controller
+# iam-policy-controller
+iam-policy-controller

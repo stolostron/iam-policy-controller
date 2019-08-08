@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	mcmv1alpha1 "github.ibm.com/IBMPrivateCloud/iam-security-policy-controller/pkg/apis/iam.mcm/v1alpha1"
+	mcmv1alpha1 "github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis/iam.mcm/v1alpha1"
 )
 
 // IfMatch check matches

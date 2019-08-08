@@ -1,7 +1,7 @@
 replicas: 1
 
 image: 
-  repository: ibmcom/iam-security-policy-controller
+  repository: ibmcom/iam-policy-controller
   tag: 0.0.1
   pullPolicy: IfNotPresent
 

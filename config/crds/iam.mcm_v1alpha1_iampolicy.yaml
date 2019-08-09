@@ -34,7 +34,7 @@ spec:
             maxClusterRoleBindingUsers:
               format: int64
               type: integer
-            maxRoleBindingUsersPerNamespace:
+            maxRoleBindingViolationPerNamespace:
               format: int64
               type: integer
             namespaceSelector:

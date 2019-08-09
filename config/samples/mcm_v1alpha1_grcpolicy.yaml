@@ -12,3 +12,4 @@ spec:
     #env: "production"
   remediationAction: inform # enforce or inform
   maxClusterRoleBindingUsers: 5
+  maxRoleBindingViolationPerNamespace: 2

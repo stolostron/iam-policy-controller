@@ -217,7 +217,6 @@ func (r *ReconcileGRCPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, nil
 	}
 	glog.V(3).Infof("reason: successful processing, subject: policy/%v, namespace: %v, according to policy: %v, additional-info: none\n", instance.Name, instance.Namespace, instance.Name)
-
 	return reconcile.Result{}, nil
 }
 
@@ -246,7 +245,6 @@ func PeriodicallyExecGRCPolicies(freq uint) {
 	for {
 		start := time.Now()
 		printMap(availablePolicies.PolicyMap)
-
 		plcToUpdateMap = make(map[string]*mcmv1alpha1.IamPolicy)
 
 		// Loops through all of the iam policies
@@ -261,12 +259,12 @@ func PeriodicallyExecGRCPolicies(freq uint) {
 				glog.Errorf("reason: communication error, subject: k8s API server, namespace: %v, according to policy: %v, additional-info: %v\n", namespace, policy.Name, err)
 				continue
 			}
-			userViolationCount := checkViolationsPerNamespace(roleBindingList, policy, namespace)
+
+			roleBindingViolationCount, violatedBindings := checkRoleBindingViolations(roleBindingList, policy, namespace)
 			if strings.ToLower(string(policy.Spec.RemediationAction)) == strings.ToLower(string(mcmv1alpha1.Enforce)) {
 				glog.V(5).Infof("Enforce is set, but ignored :-)")
 			}
-
-			if addViolationCount(policy, userViolationCount, namespace) {
+			if addRoleBindingsViolationCount(policy, roleBindingViolationCount, violatedBindings, namespace) {
 				plcToUpdateMap[policy.Name] = policy
 			}
 			checkComplianceBasedOnDetails(policy)
@@ -307,7 +305,6 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*mcmv1alpha1.IamPolicy)
 	}
 
 	clusterLevelUsers := checkAllClusterLevel(ClusteRoleBindingList)
-
 	for _, policy := range plcMap {
 		var userViolationCount int
 		if policy.Spec.MaxClusterRoleBindingUsers < clusterLevelUsers && policy.Spec.MaxClusterRoleBindingUsers >= 0 {
@@ -318,7 +315,6 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*mcmv1alpha1.IamPolicy)
 		}
 		checkComplianceBasedOnDetails(policy)
 	}
-
 	return nil
 }
 
@@ -343,21 +339,59 @@ func convertMaptoPolicyNameKey() map[string]*mcmv1alpha1.IamPolicy {
 	return plcMap
 }
 
-func checkViolationsPerNamespace(roleBindingList *v1.RoleBindingList, plc *mcmv1alpha1.IamPolicy, namespace string) (userV int) {
+func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *mcmv1alpha1.IamPolicy, namespace string) (roleBindingV int, violatedRoleBindings []string) {
 
-	usersMap := make(map[string]bool)
+	roleBindingsMap := make(map[string]bool)
 	for _, roleBinding := range roleBindingList.Items {
 		for _, subject := range roleBinding.Subjects {
-			if subject.Kind == "User" {
-				usersMap[subject.Name] = true
+			if subject.Kind == "Group" && subject.Name != roleBinding.Name && roleBinding.Name != "ibmcloud-cluster-info" {
+				roleBindingsMap[roleBinding.Name] = true
+				fmt.Println("violated roleBinding:", roleBinding.Name)
+				violatedRoleBindings = append(violatedRoleBindings, roleBinding.Name)
 			}
 		}
+		if !strings.HasPrefix(roleBinding.RoleRef.Name, "icp:") && strings.HasPrefix(roleBinding.Name, "icp:") {
+			roleBindingsMap[roleBinding.Name] = true
+			violatedRoleBindings = append(violatedRoleBindings, roleBinding.Name)
+		}
 	}
-	var userViolationCount int
-	if plc.Spec.MaxRoleBindingUsersPerNamespace < len(usersMap) && plc.Spec.MaxRoleBindingUsersPerNamespace >= 0 {
-		userViolationCount = (len(usersMap) - plc.Spec.MaxRoleBindingUsersPerNamespace)
+	var rBindingViolationCount int
+	if plc.Spec.MaxRoleBindingViolationPerNamespace < len(roleBindingsMap) && plc.Spec.MaxRoleBindingViolationPerNamespace >= 0 {
+		rBindingViolationCount = (len(roleBindingsMap) - plc.Spec.MaxRoleBindingViolationPerNamespace)
 	}
-	return userViolationCount
+	return rBindingViolationCount, violatedRoleBindings
+}
+
+func addRoleBindingsViolationCount(plc *mcmv1alpha1.IamPolicy, roleBindingCount int, vRoleBindings []string, namespace string) bool {
+
+	changed := false
+	if roleBindingCount > 0 {
+		msg := fmt.Sprintf("%s rolebindings violations detected in namespace `%s`, violated rolebinding : %v", fmt.Sprint(roleBindingCount), namespace, vRoleBindings)
+		if plc.Status.CompliancyDetails == nil {
+			plc.Status.CompliancyDetails = make(map[string]map[string][]string)
+		}
+		if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
+			plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)
+
+		}
+		if plc.Status.CompliancyDetails[plc.Name][namespace] == nil {
+			plc.Status.CompliancyDetails[plc.Name][namespace] = []string{}
+		}
+		if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
+			plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
+			changed = true
+			return changed
+		}
+		firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
+		if len(firstNum) > 0 {
+			if firstNum[0] == fmt.Sprint(roleBindingCount) {
+				return false
+			}
+		}
+		plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
+		changed = true
+	}
+	return changed
 }
 
 func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, namespace string) bool {

@@ -10,8 +10,7 @@ The controller can be run as a stand-alone program within IBM Cloud Private. Its
 
 The controller watches for policy registered with kind `IamPolicy` objects in Kubernetes. Following is an example spec of a `IamPolicy` object:
 
-
-```
+```yaml
 apiVersion: iam.mcm.ibm.com/v1alpha1
 kind: IamPolicy
 metadata:
@@ -20,7 +19,7 @@ metadata:
   label: 
     category: "System-Integrity"
 spec:
-  # Include are the namespaces you want to watch cluster administrator role and IAM rolebinings, while exclude are the namespaces you explicitly do not want to watch
+  # Include are the namespaces for which you want to watch cluster administrator role and IAM rolebinings, while exclude are the namespaces you explicitly do not want to watch
   namespaceSelector:
     include: ["default","kube-*"]
     exclude: ["kube-system"]
@@ -28,8 +27,8 @@ spec:
     #env: "production"
   # Can be enforce or inform, however enforce doesn't do anything with regards to this controller
      remediationAction: inform # enforce or inform
-  # Maximum number of cluster role binding still valid before it is considered non-compliant
+  # Maximum number of cluster role binding still valid before it is considered as non-compliant
   maxClusterRoleBindingUsers: 5
-  # Maximum number IAM role bindings still valid before it is considered non-compliant
+  # Maximum number of iam role bindings still valid before it is considered as non-compliant
   maxRoleBindingViolationPerNamespace: 2
 ```

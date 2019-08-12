@@ -13,7 +13,7 @@ spec:
     exclude: ["kube*"]
   policy-templates:
     - apiVersion: mcm.ibm.com/v1alpha1
-      kind: GRCPolicy
+      kind: IamPolicy
       metadata:
         name: grc-policy-example
         label: 
@@ -25,4 +25,4 @@ spec:
         #labelSelector:
           #env: "production"
         remediationAction: enforce # enforce or inform
-        maxRoleBindingUsersPerNamespace: 2
+        maxRoleBindingViolationsPerNamespace: 2

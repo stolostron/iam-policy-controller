@@ -356,8 +356,8 @@ func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *mcmv1a
 		}
 	}
 	var rBindingViolationCount int
-	if plc.Spec.MaxRoleBindingViolationPerNamespace < len(roleBindingsMap) && plc.Spec.MaxRoleBindingViolationPerNamespace >= 0 {
-		rBindingViolationCount = (len(roleBindingsMap) - plc.Spec.MaxRoleBindingViolationPerNamespace)
+	if plc.Spec.MaxRoleBindingViolationsPerNamespace < len(roleBindingsMap) && plc.Spec.MaxRoleBindingViolationsPerNamespace >= 0 {
+		rBindingViolationCount = (len(roleBindingsMap) - plc.Spec.MaxRoleBindingViolationsPerNamespace)
 	}
 	return rBindingViolationCount, violatedRoleBindings
 }

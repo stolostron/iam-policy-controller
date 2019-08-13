@@ -12,10 +12,10 @@ spec:
     include: ["default"]
     exclude: ["kube*"]
   policy-templates:
-    - apiVersion: mcm.ibm.com/v1alpha1
+    - apiVersion: iam.mcm.ibm.com/v1alpha1
       kind: IamPolicy
       metadata:
-        name: grc-policy-example
+        name: iam-policy-example
         label: 
           category: "System-Integrity"
       spec:

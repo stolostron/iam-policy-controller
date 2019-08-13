@@ -1,10 +1,12 @@
 apiVersion: iam.mcm.ibm.com/v1alpha1
 kind: IamPolicy
 metadata:
-  name: iam-grc-policy
+  name: iam-policy-example
+  namespace: kube-system
   label: 
     category: "System-Integrity"
 spec:
+  #Include are the namespaces for which you want to watch cluster administrator role and IAM rolebinings, while exclude are the namespaces you explicitly do not want to watch
   namespaceSelector:
     include: ["default","kube-*"]
     exclude: ["kube-system"]

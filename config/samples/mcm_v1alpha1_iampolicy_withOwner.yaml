@@ -1,7 +1,7 @@
-apiVersion: mcm.ibm.com/v1alpha1
-kind: GRCPolicy
+apiVersion: iam.mcm.ibm.com/v1alpha1
+kind: IamPolicy
 metadata:
-  name: grc-policy-with-owner
+  name: iam-policy-with-owner
   label: 
     category: "System-Integrity"
     cluster-namespace: "default" #used to indicate the namespace of the parent policy

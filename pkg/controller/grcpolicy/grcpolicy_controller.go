@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	mcmv1alpha1 "github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis/iam.mcm/v1alpha1"
+	mcmv1alpha1 "github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
 	"github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/rbac/v1"
@@ -157,8 +157,8 @@ type ReconcileGRCPolicy struct {
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=iam.mcm.ibm.com,resources=policies,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=iam.mcm.ibm.com,resources=policies/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=iam.policies.ibm.com,resources=policies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=iam.policies.ibm.com,resources=policies/status,verbs=get;update;patch
 func (r *ReconcileGRCPolicy) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the IamPolicy instance
 	instance := &mcmv1alpha1.IamPolicy{}
@@ -581,7 +581,6 @@ func printMap(myMap map[string]*mcmv1alpha1.IamPolicy) {
 		return
 	}
 	fmt.Println("Available policies in namespaces: ")
-
 	for k, v := range myMap {
 		fmt.Printf("namespace = %v; policy = %v \n", k, v.Name)
 	}

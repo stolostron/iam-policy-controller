@@ -7,7 +7,7 @@
 package apis
 
 import (
-	"github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis/iam.mcm/v1alpha1"
+	"github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
 )
 
 func init() {

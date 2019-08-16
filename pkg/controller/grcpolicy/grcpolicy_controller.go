@@ -344,7 +344,7 @@ func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *mcmv1a
 	roleBindingsMap := make(map[string]bool)
 	for _, roleBinding := range roleBindingList.Items {
 		for _, subject := range roleBinding.Subjects {
-			if subject.Kind == "Group" && subject.Name != roleBinding.Name && roleBinding.Name != "ibmcloud-cluster-info" {
+			if subject.Kind == "Group" && subject.Name != roleBinding.Name && roleBinding.Name != "ibmcloud-cluster-info" && roleBinding.Name != "ibmcloud-cluster-ca-cert" {
 				roleBindingsMap[roleBinding.Name] = true
 				fmt.Println("violated roleBinding:", roleBinding.Name)
 				violatedRoleBindings = append(violatedRoleBindings, roleBinding.Name)

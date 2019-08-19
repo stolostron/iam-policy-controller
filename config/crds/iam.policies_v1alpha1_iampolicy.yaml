@@ -4,9 +4,9 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: iampolicies.iam.mcm.ibm.com
+  name: iampolicies.iam.policies.ibm.com
 spec:
-  group: iam.mcm.ibm.com
+  group: iam.policies.ibm.com
   names:
     kind: IamPolicy
     plural: iampolicies
@@ -31,8 +31,12 @@ spec:
             labelSelector:
               description: selecting a list of namespaces where the policy applies
               type: object
-            minimumDuration:
-              type: object
+            maxClusterRoleBindingUsers:
+              format: int64
+              type: integer
+            maxRoleBindingViolationsPerNamespace:
+              format: int64
+              type: integer
             namespaceSelector:
               description: enforce, inform
               properties:

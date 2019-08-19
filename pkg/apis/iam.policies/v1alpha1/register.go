@@ -9,9 +9,9 @@
 // Package v1alpha1 contains API Schema definitions for the mcm v1alpha1 API group
 // +k8s:openapi-gen=true
 // +k8s:deepcopy-gen=package,register
-// +k8s:conversion-gen=github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis/iam.mcm
+// +k8s:conversion-gen=github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis/iam.policies
 // +k8s:defaulter-gen=TypeMeta
-// +groupName=iam.mcm.ibm.com
+// +groupName=iam.policies.ibm.com
 package v1alpha1
 
 import (
@@ -21,7 +21,7 @@ import (
 
 var (
 	// SchemeGroupVersion is group version used to register these objects
-	SchemeGroupVersion = schema.GroupVersion{Group: "iam.mcm.ibm.com", Version: "v1alpha1"}
+	SchemeGroupVersion = schema.GroupVersion{Group: "iam.policies.ibm.com", Version: "v1alpha1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: SchemeGroupVersion}

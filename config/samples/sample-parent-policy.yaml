@@ -12,7 +12,7 @@ spec:
     include: ["default"]
     exclude: ["kube*"]
   policy-templates:
-    - apiVersion: iam.mcm.ibm.com/v1alpha1
+    - apiVersion: iam.policies.ibm.com/v1alpha1
       kind: IamPolicy
       metadata:
         name: iam-policy-example

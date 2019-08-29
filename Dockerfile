@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi7/ubi-minimal:7.6-237
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.0-159
 
 ARG VCS_REF
 ARG VCS_URL
@@ -6,7 +6,7 @@ ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG SUMMARY
 ARG GOARCH
-
+RUN microdnf update -y
 RUN microdnf install shadow-utils procps && \
       groupadd -r controller && adduser -rm -g controller -u 100 controller && \
       microdnf clean all

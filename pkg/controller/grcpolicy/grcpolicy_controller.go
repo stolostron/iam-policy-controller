@@ -365,28 +365,26 @@ func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *mcmv1a
 func addRoleBindingsViolationCount(plc *mcmv1alpha1.IamPolicy, roleBindingCount int, vRoleBindings []string, namespace string) bool {
 
 	changed := false
-	if roleBindingCount > 0 {
-		msg := fmt.Sprintf("%s rolebindings violations detected in namespace `%s`, violated rolebinding : %v", fmt.Sprint(roleBindingCount), namespace, vRoleBindings)
-		if plc.Status.CompliancyDetails == nil {
-			plc.Status.CompliancyDetails = make(map[string]map[string][]string)
-		}
-		if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
-			plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)
+	msg := fmt.Sprintf("%s rolebindings violations detected in namespace `%s`, violated rolebinding : %v", fmt.Sprint(roleBindingCount), namespace, vRoleBindings)
+	if plc.Status.CompliancyDetails == nil {
+		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
+	}
+	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
+		plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)
 
-		}
-		if plc.Status.CompliancyDetails[plc.Name][namespace] == nil {
-			plc.Status.CompliancyDetails[plc.Name][namespace] = []string{}
-		}
-		if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
-			plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
-			changed = true
-			return changed
-		}
-		firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-		if len(firstNum) > 0 {
-			if firstNum[0] == fmt.Sprint(roleBindingCount) {
-				return false
-			}
+	}
+	if plc.Status.CompliancyDetails[plc.Name][namespace] == nil {
+		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{}
+	}
+	if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
+		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
+		changed = true
+		return changed
+	}
+	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
+	if len(firstNum) > 0 {
+		if firstNum[0] == fmt.Sprint(roleBindingCount) {
+			return false
 		}
 		plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
 		changed = true
@@ -396,32 +394,30 @@ func addRoleBindingsViolationCount(plc *mcmv1alpha1.IamPolicy, roleBindingCount 
 
 func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, namespace string) bool {
 	changed := false
-	if userCount > 0 {
-		msg := fmt.Sprintf("%s clusterrole admin users violations detected in namespace `%s` ", fmt.Sprint(userCount), namespace)
-		if plc.Status.CompliancyDetails == nil {
-			plc.Status.CompliancyDetails = make(map[string]map[string][]string)
-		}
-		if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
-			plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)
-
-		}
-		if plc.Status.CompliancyDetails[plc.Name][namespace] == nil {
-			plc.Status.CompliancyDetails[plc.Name][namespace] = []string{}
-		}
-		if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
-			plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
-			changed = true
-			return changed
-		}
-		firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-		if len(firstNum) > 0 {
-			if firstNum[0] == fmt.Sprint(userCount) {
-				return false
-			}
-		}
-		plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
-		changed = true
+	msg := fmt.Sprintf("%s clusterrole admin users violations detected in namespace `%s` ", fmt.Sprint(userCount), namespace)
+	if plc.Status.CompliancyDetails == nil {
+		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
 	}
+	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
+		plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)
+
+	}
+	if plc.Status.CompliancyDetails[plc.Name][namespace] == nil {
+		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{}
+	}
+	if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
+		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
+		changed = true
+		return changed
+	}
+	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
+	if len(firstNum) > 0 {
+		if firstNum[0] == fmt.Sprint(userCount) {
+			return false
+		}
+	}
+	plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
+	changed = true
 	return changed
 }
 
@@ -577,10 +573,10 @@ func removeString(slice []string, s string) (result []string) {
 // Helper functions that pretty prints a map
 func printMap(myMap map[string]*mcmv1alpha1.IamPolicy) {
 	if len(myMap) == 0 {
-		fmt.Println("Waiting for policies to be available for processing... ")
+		fmt.Println("Waiting for iam policies to be available for processing... ")
 		return
 	}
-	fmt.Println("Available policies in namespaces: ")
+	fmt.Println("Available iam policies in namespaces: ")
 	for k, v := range myMap {
 		fmt.Printf("namespace = %v; policy = %v \n", k, v.Name)
 	}

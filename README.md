@@ -15,7 +15,6 @@ apiVersion: iam.policies.ibm.com/v1alpha1
 kind: IamPolicy
 metadata:
   name: iam-grc-policy
-  namespace: kube-system
   label: 
     category: "System-Integrity"
 spec:

@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -344,7 +345,7 @@ func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *mcmv1a
 	roleBindingsMap := make(map[string]bool)
 	for _, roleBinding := range roleBindingList.Items {
 		for _, subject := range roleBinding.Subjects {
-			if subject.Kind == "Group" && subject.Name != roleBinding.Name && roleBinding.Name != "ibmcloud-cluster-info" && roleBinding.Name != "ibmcloud-cluster-ca-cert" {
+			if subject.Kind == "Group" && subject.Name != roleBinding.Name && strings.HasPrefix(roleBinding.Name, "icp:") {
 				roleBindingsMap[roleBinding.Name] = true
 				fmt.Println("violated roleBinding:", roleBinding.Name)
 				violatedRoleBindings = append(violatedRoleBindings, roleBinding.Name)
@@ -593,7 +594,12 @@ func createParentPolicyEvent(instance *mcmv1alpha1.IamPolicy) {
 
 	parentPlc := createParentPolicy(instance)
 
-	reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+	if instance.Status.ComplianceState == mcmv1alpha1.NonCompliant {
+		klog.Info("Non compliant policy")
+		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeWarning, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+	} else {
+		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+	}
 }
 
 func createParentPolicy(instance *mcmv1alpha1.IamPolicy) mcmv1alpha1.Policy {

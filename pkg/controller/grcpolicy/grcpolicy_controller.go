@@ -26,7 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -491,7 +490,11 @@ func updatePolicyStatus(policies map[string]*mcmv1alpha1.IamPolicy) (*mcmv1alpha
 			createParentPolicyEvent(instance)
 		}
 		{ //TODO we can make this eventing enabled by a flag
-			reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+			if instance.Status.ComplianceState == mcmv1alpha1.NonCompliant {
+				reconcilingAgent.recorder.Event(instance, corev1.EventTypeWarning, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+			} else {
+				reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+			}
 		}
 	}
 	return nil, nil
@@ -595,7 +598,6 @@ func createParentPolicyEvent(instance *mcmv1alpha1.IamPolicy) {
 	parentPlc := createParentPolicy(instance)
 
 	if instance.Status.ComplianceState == mcmv1alpha1.NonCompliant {
-		klog.Info("Non compliant policy")
 		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeWarning, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 	} else {
 		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))

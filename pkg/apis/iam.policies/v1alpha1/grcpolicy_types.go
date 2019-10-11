@@ -43,11 +43,17 @@ type Target struct {
 
 // IamPolicySpec defines the desired state of GRCPolicy
 type IamPolicySpec struct {
-	RemediationAction                    RemediationAction `json:"remediationAction,omitempty"` //enforce, inform
-	NamespaceSelector                    Target            `json:"namespaceSelector,omitempty"` // selecting a list of namespaces where the policy applies
-	LabelSelector                        map[string]string `json:"labelSelector,omitempty"`
-	MaxRoleBindingViolationsPerNamespace int               `json:"maxRoleBindingViolationsPerNamespace,omitempty"`
-	MaxClusterRoleBindingUsers           int               `json:"maxClusterRoleBindingUsers,omitempty"`
+	// enforce, inform
+	RemediationAction RemediationAction `json:"remediationAction,omitempty"`
+	// Selecting a list of namespaces where the policy applies
+	NamespaceSelector Target            `json:"namespaceSelector,omitempty"`
+	LabelSelector     map[string]string `json:"labelSelector,omitempty"`
+	// Maximum number of iam rolebindings violations still valid before it is considered non-compliant
+	MaxRoleBindingViolationsPerNamespace int `json:"maxRoleBindingViolationsPerNamespace,omitempty"`
+	// Maximum number of cluster role binding users still valid before it is considered non-compliant
+	MaxClusterRoleBindingUsers int `json:"maxClusterRoleBindingUsers,omitempty"`
+	// low, medium, or high
+	Severity string `json:"severity,omitempty"`
 }
 
 // IamPolicyStatus defines the observed state of IamPolicy

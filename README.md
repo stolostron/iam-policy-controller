@@ -26,6 +26,7 @@ spec:
     #env: "production"
   # Can be enforce or inform, however enforce doesn't do anything with regards to this controller
      remediationAction: inform # enforce or inform
+     severity: medium # low, medium, or high
   # Maximum number of cluster role binding still valid before it is considered as non-compliant
   maxClusterRoleBindingUsers: 5
   # Maximum number of iam role bindings violations still valid before it is considered as non-compliant

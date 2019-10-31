@@ -97,7 +97,7 @@ generate:
 docker-push:
 	@make docker:push
 ifneq ($(RETAG),)
-	$(eval RELEASE := $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(RELEASE_TAG))
+	$(eval RELEASE := $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(SEMVERSION))
 	docker tag $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(DOCKER_BUILD_TAG) $(RELEASE)
 	@make DOCKER_URI=$(RELEASE) docker:push
 	@echo "Retagged image as $(RELEASE) and pushed to $(DOCKER_REGISTRY)"
@@ -107,7 +107,7 @@ docker-push-rhel:
 	$(eval RHEL_IMAGE := $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(DOCKER_BUILD_TAG_RHEL))
 	@make DOCKER_URI=$(RHEL_IMAGE) docker:push
 ifneq ($(RETAG),)
-	$(eval RELEASE := $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(RELEASE_TAG_RHEL))
+	$(eval RELEASE := $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(SEMVERSION)-rhel)
 	docker tag $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(DOCKER_BUILD_TAG_RHEL) $(RELEASE)
 	@make DOCKER_URI=$(RELEASE) docker:push
 	@echo "Retagged image as $(RELEASE) and pushed to $(DOCKER_REGISTRY)"

@@ -323,7 +323,7 @@ func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (us
 	usersMap := make(map[string]bool)
 	for _, clusterRoleBinding := range clusterRoleBindingList.Items {
 		for _, subject := range clusterRoleBinding.Subjects {
-			if subject.Kind == "User" {
+			if subject.Kind == "User" && !strings.HasPrefix(clusterRoleBinding.Name, "system") {
 				usersMap[subject.Name] = true
 			}
 		}

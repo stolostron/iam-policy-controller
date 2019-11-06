@@ -365,7 +365,8 @@ func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *mcmv1a
 func addRoleBindingsViolationCount(plc *mcmv1alpha1.IamPolicy, roleBindingCount int, vRoleBindings []string, namespace string) bool {
 
 	changed := false
-	msg := fmt.Sprintf("%s rolebindings violations detected in namespace `%s`, violated rolebinding : %v", fmt.Sprint(roleBindingCount), namespace, vRoleBindings)
+	msg := fmt.Sprintf("%s rolebindings violations detected in namespace `%s` : %v", fmt.Sprint(roleBindingCount), namespace, vRoleBindings)
+
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
 	}
@@ -393,8 +394,9 @@ func addRoleBindingsViolationCount(plc *mcmv1alpha1.IamPolicy, roleBindingCount 
 }
 
 func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, namespace string) bool {
+
 	changed := false
-	msg := fmt.Sprintf("%s clusterrole admin users violations detected in namespace `%s` ", fmt.Sprint(userCount), namespace)
+	msg := fmt.Sprintf("Number of users with clusteradmin role is %s above the specified limit", fmt.Sprint(userCount))
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
 	}
@@ -436,7 +438,10 @@ func checkComplianceBasedOnDetails(plc *mcmv1alpha1.IamPolicy) {
 		if len(msgList) > 0 {
 			violationNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
 			if len(violationNum) > 0 {
-				if violationNum[0] != fmt.Sprint(0) {
+				if violationNum[7] != fmt.Sprint(0) && strings.HasPrefix(violationNum[0], "Number") {
+					plc.Status.ComplianceState = mcmv1alpha1.NonCompliant
+				}
+				if violationNum[0] != fmt.Sprint(0) && strings.HasPrefix(violationNum[1], "rolebindings") {
 					plc.Status.ComplianceState = mcmv1alpha1.NonCompliant
 				}
 			}

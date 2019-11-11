@@ -365,7 +365,7 @@ func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *mcmv1a
 func addRoleBindingsViolationCount(plc *mcmv1alpha1.IamPolicy, roleBindingCount int, vRoleBindings []string, namespace string) bool {
 
 	changed := false
-	msg := fmt.Sprintf("%s rolebindings violations detected in namespace `%s` : %v", fmt.Sprint(roleBindingCount), namespace, vRoleBindings)
+	msg := fmt.Sprintf("%s rolebindings violations detected in namespace `%s`, violated rolebinding : %v", fmt.Sprint(roleBindingCount), namespace, vRoleBindings)
 
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)

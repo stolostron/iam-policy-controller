@@ -16,7 +16,12 @@ branches:
     - /^v[0-9]+\..*$/
     - /^release-[0-9]+\..*$/
     - build
-
+    
+install:
+  - mkdir -p $GOPATH/bin
+  - export GOBIN="$GOPATH/bin"
+  - export PATH="$PATH:$GOBIN"
+    
 matrix:
   fast_finish: true
 

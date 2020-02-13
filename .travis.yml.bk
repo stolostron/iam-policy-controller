@@ -2,7 +2,7 @@ language: bash
 sudo: true
 
 language: go
-go_import_path: github.ibm.com/IBMPrivateCloud/iam-policy-controller
+go_import_path: github.com/open-cluster-management/iam-policy-controller
 go:
   - 1.13.4
 

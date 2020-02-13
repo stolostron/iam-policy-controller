@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-make deps
-make lintall
+make dependencies
+make lint
 make test
-make coverage

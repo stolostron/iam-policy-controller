@@ -3,7 +3,7 @@
 # (C) Copyright IBM Corporation 2018 All Rights Reserved
 # The source code for this program is not published or otherwise divested of its trade secrets, irrespective of what has been deposited with the U.S. Copyright Office.
 
-include Configfile
+include build/Configfile
 
 # CICD BUILD HARNESS
 ####################
@@ -25,7 +25,8 @@ ifndef GITHUB_TOKEN
 	exit -1
 endif
 
--include $(shell curl -fso .build-harness -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3.raw" "https://raw.github.ibm.com/ICP-DevOps/build-harness/master/templates/Makefile.build-harness"; echo .build-harness)
+-include $(shell curl -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
+
 
 .PHONY: all lint test dependencies build image rhel-image manager run deploy install \
 fmt vet generate docker-push docker-push-rhel
@@ -44,7 +45,7 @@ test: generate fmt vet manifests
 
 dependencies:
 	curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-	export PATH=$(PATH):/$(GOPATH)/bin
+	# export PATH=$(PATH):/$(GOPATH)/bin
 	dep ensure
 
 build:

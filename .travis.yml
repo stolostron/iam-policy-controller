@@ -16,10 +16,10 @@ env:
     - OS=linux
     - COMPONENT_TAG_EXTENSION="-${TRAVIS_COMMIT}"
     # Component Specific
-    - COMPONENT_INIT_COMMAND=${TRAVIS_BUILD_DIR}/build-tools/install-dependencies.sh
-    - COMPONENT_BUILD_COMMAND=${TRAVIS_BUILD_DIR}/build-tools/build.sh
-    - COMPONENT_UNIT_TEST_COMMAND=${TRAVIS_BUILD_DIR}/build-tools/run-unit-tests.sh
-    - COMPONENT_E2E_TEST_COMMAND=${TRAVIS_BUILD_DIR}/build-tools/run-e2e-tests.sh
+    - COMPONENT_INIT_COMMAND=${TRAVIS_BUILD_DIR}/build/install-dependencies.sh
+    - COMPONENT_BUILD_COMMAND=${TRAVIS_BUILD_DIR}/build/build.sh
+    - COMPONENT_UNIT_TEST_COMMAND=${TRAVIS_BUILD_DIR}/build/run-unit-tests.sh
+    - COMPONENT_E2E_TEST_COMMAND=${TRAVIS_BUILD_DIR}/build/run-e2e-tests.sh
 
 
 stages:

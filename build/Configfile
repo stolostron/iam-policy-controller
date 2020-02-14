@@ -24,3 +24,10 @@ DOCKER_BUILD_DIR := $(TRAVIS_BUILD_DIR)
 # Go build settings
 GOARCH := $(ARCH)
 GOOS := linux
+
+DOCKER_BUILD_OPTS=--build-arg "VCS_REF=$(GIT_COMMIT)" \
+	--build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
+	--build-arg "IMAGE_NAME=$(DOCKER_IMAGE)" \
+	--build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+	--build-arg "SUMMARY=$(SUMMARY)" \
+	--build-arg "GOARCH=$(GOARCH)"

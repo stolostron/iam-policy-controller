@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	mcmv1alpha1 "github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
-	"github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/common"
+	mcmv1alpha1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
+	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

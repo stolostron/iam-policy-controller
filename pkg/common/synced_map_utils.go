@@ -9,7 +9,7 @@ package common
 import (
 	"sync"
 
-	mcmv1alpha1 "github.ibm.com/IBMPrivateCloud/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
+	mcmv1alpha1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
 )
 
 //SyncedPolicyMap a thread safe map

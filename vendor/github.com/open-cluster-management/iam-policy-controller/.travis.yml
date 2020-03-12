@@ -1,0 +1,57 @@
+language: go
+go:
+  - 1.13.4
+
+services:
+  - docker
+
+branches:
+  only:
+    - master
+    - /^release-[0-9]+\..*$/
+
+env:
+  global:
+    # Required
+    - OS=linux
+    - COMPONENT_TAG_EXTENSION="-${TRAVIS_COMMIT}"
+    # Component Specific
+    - COMPONENT_INIT_COMMAND=${TRAVIS_BUILD_DIR}/build/install-dependencies.sh
+    - COMPONENT_BUILD_COMMAND=${TRAVIS_BUILD_DIR}/build/build.sh
+    - COMPONENT_UNIT_TEST_COMMAND=${TRAVIS_BUILD_DIR}/build/run-unit-tests.sh
+    - COMPONENT_E2E_TEST_COMMAND=${TRAVIS_BUILD_DIR}/build/run-e2e-tests.sh
+
+
+stages:
+  - build
+  - unit-test
+  - test-e2e
+  - publish
+
+before_script:
+  - make init
+
+jobs:
+  include:
+    - stage: build
+      name: "Build the image and push"
+      script:
+        - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
+        - make component/build
+        - make component/push
+    - stage: unit-test
+      name: "Build and run unit tests"
+      script:
+        - make component/test/unit
+    - stage: test-e2e
+      name: "Run e2e tests"
+      if: type = pull_request
+      script:
+        - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
+        - make component/pull
+        - make component/test/e2e
+    - stage: publish
+      name: "Publish the image to quay with an official version/sha tag and publish entry to integration pipeline stage"
+      if: type = push AND branch =~ /^release-[0-9]+\..*$/
+      script:
+        - make pipeline-manifest/update PIPELINE_MANIFEST_COMPONENT_SHA256=${TRAVIS_COMMIT} PIPELINE_MANIFEST_COMPONENT_REPO=${TRAVIS_REPO_SLUG} PIPELINE_MANIFEST_BRANCH=${TRAVIS_BRANCH}

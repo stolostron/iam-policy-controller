@@ -312,6 +312,21 @@
   version = "v1.4.3"
 
 [[projects]]
+  digest = "1:7477dfcae6dd15150300d3be09685d43c3a7a7b1b42d2b80953e7ca9591549ac"
+  name = "github.com/open-cluster-management/iam-policy-controller"
+  packages = [
+    "pkg/apis",
+    "pkg/apis/iam.policies/v1alpha1",
+    "pkg/common",
+    "pkg/controller",
+    "pkg/controller/grcpolicy",
+    "pkg/webhook",
+  ]
+  pruneopts = "T"
+  revision = "b03449fd42ab137c6120d1270762f1fa6b9032f2"
+  version = "1.0.0-SNAPSHOT-2020-03-10-17-00-25"
+
+[[projects]]
   digest = "1:e5d0bd87abc2781d14e274807a470acd180f0499f8bf5bb18606e9ec22ad9de9"
   name = "github.com/pborman/uuid"
   packages = ["."]
@@ -960,9 +975,18 @@
     "github.com/golang/glog",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
+    "github.com/open-cluster-management/iam-policy-controller/pkg/apis",
+    "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1alpha1",
+    "github.com/open-cluster-management/iam-policy-controller/pkg/common",
+    "github.com/open-cluster-management/iam-policy-controller/pkg/controller",
+    "github.com/open-cluster-management/iam-policy-controller/pkg/controller/grcpolicy",
+    "github.com/open-cluster-management/iam-policy-controller/pkg/webhook",
+    "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promhttp",
     "golang.org/x/net/context",
     "k8s.io/api/apps/v1",
     "k8s.io/api/core/v1",
+    "k8s.io/api/rbac/v1",
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/apis/meta/v1",

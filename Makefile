@@ -3,35 +3,54 @@
 # (C) Copyright IBM Corporation 2018 All Rights Reserved
 # The source code for this program is not published or otherwise divested of its trade secrets, irrespective of what has been deposited with the U.S. Copyright Office.
 
-include build/Configfile
+# Git vars
+GITHUB_USER ?=
+GITHUB_TOKEN ?=
 
 # CICD BUILD HARNESS
 ####################
 GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
 
-.PHONY: default
-default:: init;
-
-.PHONY: init\:
-init::
-	@mkdir -p variables
-ifndef GITHUB_USER
-	$(info GITHUB_USER not defined)
-	exit -1
-endif
-	$(info Using GITHUB_USER=$(GITHUB_USER))
-ifndef GITHUB_TOKEN
-	$(info GITHUB_TOKEN not defined)
-	exit -1
-endif
-
 -include $(shell curl -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
 
+.PHONY: default
+default::
+	@echo "Build Harness Bootstrapped"
 
-.PHONY: all lint test dependencies build image rhel-image manager run deploy install \
-fmt vet generate docker-push docker-push-rhel
 
-all: test manager
+# Go build settings
+ARCH = $(shell uname -m)
+ifeq ($(ARCH), x86_64)
+    ARCH = amd64
+endif
+GOARCH := $(ARCH)
+GOOS := linux
+
+# Image settings
+
+GIT_COMMIT := $(shell git rev-parse --short HEAD)
+GIT_REMOTE_URL := $(shell git config --get remote.origin.url)
+
+IMAGE_NAME ?= iam-policy-controller
+IMAGE_VERSION := 1.0.0
+IMAGE_DESCRIPTION =IAM Policy Controller
+
+DOCKER_REGISTRY ?= quay.io
+DOCKER_NAMESPACE ?= open-cluster-management
+DOCKER_BUILD_TAG ?= $(IMAGE_VERSION)-$(GIT_COMMIT)
+DOCKER_FILE := Dockerfile
+DOCKER_BUILD_DIR := $(TRAVIS_BUILD_DIR)
+DOCKER_BUILD_OPTS=--build-arg "VCS_REF=$(GIT_COMMIT)" \
+	--build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
+	--build-arg "IMAGE_NAME=$(IMAGE_NAME)" \
+	--build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
+	--build-arg "SUMMARY=$(IMAGE_DESCRIPTION)" \
+	--build-arg "GOARCH=$(GOARCH)"
+
+
+.PHONY: all lint test dependencies build image run deploy install fmt vet generate
+
+all: test
 
 lint:
 	@echo "Linting disabled."
@@ -52,17 +71,8 @@ build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./iam-policy_$(GOARCH) ./cmd/manager
 
 image:
-	$(eval DOCKER_BUILD_OPTS := '--build-arg "VCS_REF=$(GIT_COMMIT)" \
-		--build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
-		--build-arg "IMAGE_NAME=$(DOCKER_IMAGE)" \
-		--build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
-		--build-arg "SUMMARY=$(SUMMARY)" \
-		--build-arg "GOARCH=$(GOARCH)"')
 	@make DOCKER_BUILD_OPTS=$(DOCKER_BUILD_OPTS) docker:build
 	@make docker:tag
-
-rhel-image:
-	docker tag $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(DOCKER_BUILD_TAG) $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(DOCKER_BUILD_TAG_RHEL)
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
@@ -92,23 +102,3 @@ vet:
 # Generate code
 generate:
 	go generate ./pkg/... ./cmd/...
-
-# Push the docker image
-docker-push:
-	@make docker:push
-ifneq ($(RETAG),)
-	$(eval RELEASE := $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(SEMVERSION))
-	docker tag $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(DOCKER_BUILD_TAG) $(RELEASE)
-	@make DOCKER_URI=$(RELEASE) docker:push
-	@echo "Retagged image as $(RELEASE) and pushed to $(DOCKER_REGISTRY)"
-endif
-
-docker-push-rhel:
-	$(eval RHEL_IMAGE := $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(DOCKER_BUILD_TAG_RHEL))
-	@make DOCKER_URI=$(RHEL_IMAGE) docker:push
-ifneq ($(RETAG),)
-	$(eval RELEASE := $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(SEMVERSION)-rhel)
-	docker tag $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(DOCKER_IMAGE):$(DOCKER_BUILD_TAG_RHEL) $(RELEASE)
-	@make DOCKER_URI=$(RELEASE) docker:push
-	@echo "Retagged image as $(RELEASE) and pushed to $(DOCKER_REGISTRY)"
-endif

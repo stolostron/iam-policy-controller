@@ -10,6 +10,12 @@ branches:
     - master
     - /^release-[0-9]+\..*$/
 
+addons:
+  sonarcloud:
+    organization: "open-cluster-management"
+    token:
+      secure: "PLcSiRUOKPFHDCo02NH47UQJV2ecy8TPkVP0foRZHEOvAFKofyVLRJrpd8a1tl0Accz2lJ9m6Yn5QqRUDL9JQMYc5Bvfh5Y76PqOSYF/Kt4X+zd49spXsGR6Ix9JvDC4ROoJLQ+TrzjFzgfvpfcq4C02MoM9UkGUo2LPJsoQ7KkX7DKTH8Jgk0gKCfFUDQ4UscexJWfkjmGNLwu2yisB4n7yRPZOE1oH6jkr6/3Gi/vAWDIDSnl6o48L7SIaQw8Oba9rtlWm1RfguhfLm6R5xiOG6yV1i4x/T37F43TJggfbC9k0vCc6f31eGRM/JxQpMOVPAXCJvDAwlATQfI57bC6iXLkvDwq2XzbYDZDWs6fB2QuVi3Yo2jwcck5QeaDVAIh74mpmTMSIG8ZeV93klMyAGrJ5cPYeYVy5Vtfcn0bS6Ds+U4+i2qkFQ4D2lUddROgZ82omKrWD6iKrrLyLwdnOCMAI2m8UmDXYPzRZjVsnmRcqgqR4MApGUNdF627ieijA84s0EVjx/j47jFKjjFoBEdnwrSqMUR0ZIlbsip7J8bc4Z8CHLdRR3rubT+wfvasWL0k2tuiZ1rYOcdS+NXou/cc+K9SEw7wgLQOOLVJD0Dcc8uy39yF1Iwh0w50V4XoxgaIhrimUyOqH5Kvc40MKrDTakvL1LA2cqin1PEY="
+
 env:
   global:
     # Required
@@ -39,10 +45,12 @@ jobs:
         - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
         - make component/build
         - make component/push
+        - if [ "$IMAGE_SCAN" != "false" ]; then make security/scans; fi;
     - stage: unit-test
       name: "Build and run unit tests"
       script:
         - make component/test/unit
+        - make sonar/go
     - stage: test-e2e
       name: "Run e2e tests"
       if: type = pull_request

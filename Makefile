@@ -4,8 +4,8 @@
 # The source code for this program is not published or otherwise divested of its trade secrets, irrespective of what has been deposited with the U.S. Copyright Office.
 
 # Git vars
-GITHUB_USER ?= ckandag
-GITHUB_TOKEN ?= f848b6e8feb081d7cba7615feae19f77186bef03
+GITHUB_USER ?=
+GITHUB_TOKEN ?= 
 
 # CICD BUILD HARNESS
 ####################

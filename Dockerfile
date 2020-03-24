@@ -9,7 +9,7 @@ ARG GOARCH
 
 RUN microdnf update && \
       microdnf install shadow-utils procps && \
-      groupadd -r controller && adduser -rm -g controller -u 100 controller && \
+      groupadd -r controller && adduser -rm -g controller -u 10000 controller && \
       microdnf clean all
 
 ADD iam-policy_$GOARCH /usr/bin/iam-policy-controller
@@ -20,7 +20,7 @@ RUN mkdir /licenses
 
 COPY packages.yaml /licenses
 
-USER controller
+USER 10000
 
 ENTRYPOINT ["/usr/bin/iam-policy-controller"]
 

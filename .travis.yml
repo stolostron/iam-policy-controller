@@ -50,7 +50,7 @@ jobs:
       name: "Build and run unit tests"
       script:
         - make component/test/unit
-        - make sonar/go
+        # - make sonar/go
     - stage: test-e2e
       name: "Run e2e tests"
       if: type = pull_request

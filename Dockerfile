@@ -16,9 +16,8 @@ ADD iam-policy_$GOARCH /usr/bin/iam-policy-controller
 
 RUN chmod a+x /usr/bin/iam-policy-controller
 
+#still keep licenses directory
 RUN mkdir /licenses
-
-COPY packages.yaml /licenses
 
 USER 10000
 

@@ -14,10 +14,10 @@ RUN microdnf update && \
 
 ADD iam-policy_$GOARCH /usr/bin/iam-policy-controller
 
+RUN chmod a+x /usr/bin/iam-policy-controller
+
 #still keep licenses directory
 RUN mkdir /licenses
-
-RUN chmod a+x /usr/bin/iam-policy-controller
 
 USER 10000
 

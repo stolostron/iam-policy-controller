@@ -12,7 +12,13 @@ GITHUB_TOKEN ?=
 ####################
 GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
 
--include $(shell curl -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
+USE_VENDORIZED_BUILD_HARNESS ?=
+
+ifndef USE_VENDORIZED_BUILD_HARNESS
+-include $(shell curl -s -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
+else
+-include vbh/.build-harness-vendorized
+endif
 
 .PHONY: default
 default::
@@ -27,10 +33,13 @@ endif
 GOARCH := $(ARCH)
 GOOS := linux
 
-# Image settings
+# Only use git commands if it exists
+ifdef GIT
+GIT_COMMIT      = $(shell git rev-parse --short HEAD)
+GIT_REMOTE_URL  = $(shell git config --get remote.origin.url)
+endif
 
-GIT_COMMIT := $(shell git rev-parse --short HEAD)
-GIT_REMOTE_URL := $(shell git config --get remote.origin.url)
+# Image settings
 
 IMAGE_NAME ?= iam-policy-controller
 IMAGE_VERSION := 1.0.0
@@ -60,16 +69,15 @@ copyright-check:
 	./build/copyright-check.sh $(TRAVIS_BRANCH) $(TRAVIS_PULL_REQUEST_BRANCH)
 
 # Run tests
-test: generate fmt vet manifests
+test:  fmt vet
 	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/
 
 	sudo mv /tmp/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH} /usr/local/kubebuilder
 	go test ./pkg/... ./cmd/... -v -coverprofile cover.out
 
 dependencies:
-	curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-	# export PATH=$(PATH):/$(GOPATH)/bin
-	dep ensure
+	go mod tidy
+	go mod download
 
 build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./iam-policy_$(GOARCH) ./cmd/manager

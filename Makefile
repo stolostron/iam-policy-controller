@@ -67,9 +67,8 @@ test: generate fmt vet manifests
 	go test ./pkg/... ./cmd/... -v -coverprofile cover.out
 
 dependencies:
-	curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-	# export PATH=$(PATH):/$(GOPATH)/bin
-	dep ensure
+	go mod tidy
+	go mod download
 
 build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./iam-policy_$(GOARCH) ./cmd/manager

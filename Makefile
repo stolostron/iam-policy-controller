@@ -69,16 +69,15 @@ copyright-check:
 	./build/copyright-check.sh $(TRAVIS_BRANCH) $(TRAVIS_PULL_REQUEST_BRANCH)
 
 # Run tests
-test: generate fmt vet manifests
+test:  fmt vet
 	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/
 
 	sudo mv /tmp/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH} /usr/local/kubebuilder
 	go test ./pkg/... ./cmd/... -v -coverprofile cover.out
 
 dependencies:
-	curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-	# export PATH=$(PATH):/$(GOPATH)/bin
-	dep ensure
+	go mod tidy
+	go mod download
 
 build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./iam-policy_$(GOARCH) ./cmd/manager

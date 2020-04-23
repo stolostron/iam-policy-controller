@@ -12,7 +12,13 @@ GITHUB_TOKEN ?=
 ####################
 GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
 
--include $(shell curl -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
+USE_VENDORIZED_BUILD_HARNESS ?=
+
+ifndef USE_VENDORIZED_BUILD_HARNESS
+-include $(shell curl -s -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
+else
+-include vbh/.build-harness-vendorized
+endif
 
 .PHONY: default
 default::
@@ -27,10 +33,13 @@ endif
 GOARCH := $(ARCH)
 GOOS := linux
 
-# Image settings
+# Only use git commands if it exists
+ifdef GIT
+GIT_COMMIT      = $(shell git rev-parse --short HEAD)
+GIT_REMOTE_URL  = $(shell git config --get remote.origin.url)
+endif
 
-GIT_COMMIT := $(shell git rev-parse --short HEAD)
-GIT_REMOTE_URL := $(shell git config --get remote.origin.url)
+# Image settings
 
 IMAGE_NAME ?= iam-policy-controller
 IMAGE_VERSION := 1.0.0

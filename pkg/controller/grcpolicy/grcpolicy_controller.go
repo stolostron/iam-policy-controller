@@ -19,7 +19,6 @@ import (
 	mcmv1alpha1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
 	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -175,17 +174,9 @@ func (r *ReconcileGRCPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	// name of our mcm custom finalizer
-	myFinalizerName := Finalizer
 
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		updateNeeded := false
-		// The object is not being deleted, so if it might not have our finalizer,
-		// then lets add the finalizer and update the object.
-		if !containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
-			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, myFinalizerName)
-			updateNeeded = true
-		}
 		if !ensureDefaultLabel(instance) {
 			updateNeeded = true
 		}
@@ -199,21 +190,6 @@ func (r *ReconcileGRCPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 	} else {
 		handleRemovingPolicy(instance)
 		// The object is being deleted
-		if containsString(instance.ObjectMeta.Finalizers, myFinalizerName) {
-			// our finalizer is present, so lets handle our external dependency
-			if err := r.deleteExternalDependency(instance); err != nil {
-				// if fail to delete the external dependency here, return with error
-				// so that it can be retried
-				return reconcile.Result{}, err
-			}
-
-			// remove our finalizer from the list and update it.
-			instance.ObjectMeta.Finalizers = removeString(instance.ObjectMeta.Finalizers, myFinalizerName)
-			if err := r.Update(context.Background(), instance); err != nil {
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
-		// Our finalizer has finished, so the reconciler can do nothing.
 		return reconcile.Result{}, nil
 	}
 	glog.V(3).Infof("reason: successful processing, subject: policy/%v, namespace: %v, according to policy: %v, additional-info: none\n", instance.Name, instance.Namespace, instance.Name)

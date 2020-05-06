@@ -306,6 +306,10 @@ func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (us
 			}
 		}
 	}
+	fmt.Println("Users with cluster-admin access bindings: ")
+	for k, v := range usersMap {
+		fmt.Printf("  user = %v; access = %v \n", k, v)
+	}
 	return len(usersMap)
 }
 

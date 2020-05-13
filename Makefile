@@ -5,8 +5,9 @@
 # Copyright (c) 2020 Red Hat, Inc.
 
 # Git vars
-GITHUB_USER ?=
-GITHUB_TOKEN ?=
+
+GITHUB_USER ?=ckandag
+GITHUB_TOKEN ?=b412c16f50e4bd0e6e52218ccd3b47b6b7e86442
 
 # CICD BUILD HARNESS
 ####################

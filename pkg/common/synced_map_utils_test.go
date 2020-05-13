@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"testing"
 
-	mcmv1alpha1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
+	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,14 +28,14 @@ import (
 			conditions:
 				ownership: [ReplicaSet, Deployment, DeamonSet, ReplicationController]
 */
-var plc = &mcmv1alpha1.IamPolicy{
+var plc = &policiesv1.IamPolicy{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "testPolicy",
 		Namespace: "default",
 	},
-	Spec: mcmv1alpha1.IamPolicySpec{
-		RemediationAction: mcmv1alpha1.Enforce,
-		NamespaceSelector: mcmv1alpha1.Target{
+	Spec: policiesv1.IamPolicySpec{
+		RemediationAction: policiesv1.Enforce,
+		NamespaceSelector: policiesv1.Target{
 			Include: []string{"default"},
 			Exclude: []string{"kube*"},
 		},
@@ -43,7 +43,7 @@ var plc = &mcmv1alpha1.IamPolicy{
 }
 
 var sm = SyncedPolicyMap{
-	PolicyMap: make(map[string]*mcmv1alpha1.IamPolicy),
+	PolicyMap: make(map[string]*policiesv1.IamPolicy),
 }
 
 //TestGetObject testing get object in map

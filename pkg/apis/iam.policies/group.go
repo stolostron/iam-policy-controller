@@ -5,4 +5,4 @@
 // Contract with IBM Corp.
 
 // Package mcm contains mcm API versions
-package iam.policies
+package policies

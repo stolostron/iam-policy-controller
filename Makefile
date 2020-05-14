@@ -5,7 +5,6 @@
 # Copyright (c) 2020 Red Hat, Inc.
 
 # Git vars
-
 GITHUB_USER ?=
 GITHUB_TOKEN ?=
 

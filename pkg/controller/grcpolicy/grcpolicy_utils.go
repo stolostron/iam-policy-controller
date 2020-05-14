@@ -3,6 +3,7 @@
 // Note to U.S. Government Users Restricted Rights:
 // Use, duplication or disclosure restricted by GSA ADP Schedule
 // Contract with IBM Corp.
+// Copyright (c) 2020 Red Hat, Inc.
 
 package grcpolicy
 
@@ -12,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	mcmv1alpha1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
+	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1"
 	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +22,7 @@ import (
 
 //=================================================================
 // convertPolicyStatusToString to be able to pass the status as event
-func convertPolicyStatusToString(plc *mcmv1alpha1.IamPolicy) (results string) {
+func convertPolicyStatusToString(plc *policiesv1.IamPolicy) (results string) {
 	result := "ComplianceState is still undetermined"
 	if plc.Status.ComplianceState == "" {
 		return result
@@ -52,14 +53,14 @@ func convertPolicyStatusToString(plc *mcmv1alpha1.IamPolicy) (results string) {
 
 func createGenericObjectEvent(name, namespace string) {
 
-	plc := &mcmv1alpha1.Policy{
+	plc := &policiesv1.Policy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Policy",
-			APIVersion: "policy.mcm.ibm.com/v1alpha1",
+			APIVersion: "policies.open-cluster-management.io/v1",
 		},
 	}
 	data, err := json.Marshal(plc)

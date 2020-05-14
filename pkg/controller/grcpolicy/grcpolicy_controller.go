@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	mcmv1alpha1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
+	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1"
 	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/api/rbac/v1"
@@ -51,7 +51,7 @@ var clusterName = "managedCluster"
 var availablePolicies common.SyncedPolicyMap
 
 // PlcChan a channel used to pass policies ready for update
-var PlcChan chan *mcmv1alpha1.IamPolicy
+var PlcChan chan *policiesv1.IamPolicy
 
 // KubeClient a k8s client used for k8s native resources
 var KubeClient *kubernetes.Clientset
@@ -86,7 +86,7 @@ func startProm() {
 // Initialize to initialize some controller varaibles
 func Initialize(kClient *kubernetes.Clientset, mgr manager.Manager, clsName, namespace, eventParent, promAddr string) (err error) {
 	KubeClient = kClient
-	PlcChan = make(chan *mcmv1alpha1.IamPolicy, 100) //buffering up to 100 policies for update
+	PlcChan = make(chan *policiesv1.IamPolicy, 100) //buffering up to 100 policies for update
 
 	if clsName != "" {
 		clusterName = clsName
@@ -126,15 +126,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to IamPolicy
-	err = c.Watch(&source.Kind{Type: &mcmv1alpha1.IamPolicy{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &policiesv1.IamPolicy{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// Uncomment watch a Deployment created by IamPolicy - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &mcmv1alpha1.IamPolicy{}}, &handler.EnqueueRequestForOwner{
+	err = c.Watch(&source.Kind{Type: &policiesv1.IamPolicy{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &mcmv1alpha1.IamPolicy{},
+		OwnerType:    &policiesv1.IamPolicy{},
 	})
 	if err != nil {
 		return err
@@ -158,11 +158,11 @@ type ReconcileGRCPolicy struct {
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=iam.policies.ibm.com,resources=policies,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=iam.policies.ibm.com,resources=policies/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=iam.policies.open-cluster-management.io,resources=policies,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=iam.policies.open-cluster-management.io,resources=policies/status,verbs=get;update;patch
 func (r *ReconcileGRCPolicy) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the IamPolicy instance
-	instance := &mcmv1alpha1.IamPolicy{}
+	instance := &policiesv1.IamPolicy{}
 	if reconcilingAgent == nil {
 		reconcilingAgent = r
 	}
@@ -198,7 +198,7 @@ func (r *ReconcileGRCPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 	return reconcile.Result{}, nil
 }
 
-func ensureDefaultLabel(instance *mcmv1alpha1.IamPolicy) (updateNeeded bool) {
+func ensureDefaultLabel(instance *policiesv1.IamPolicy) (updateNeeded bool) {
 	//we need to ensure this label exists -> category: "System and Information Integrity"
 	if instance.ObjectMeta.Labels == nil {
 		newlbl := make(map[string]string)
@@ -219,11 +219,11 @@ func ensureDefaultLabel(instance *mcmv1alpha1.IamPolicy) (updateNeeded bool) {
 
 // PeriodicallyExecGRCPolicies always check status - let this be the only function in the controller
 func PeriodicallyExecGRCPolicies(freq uint) {
-	var plcToUpdateMap map[string]*mcmv1alpha1.IamPolicy
+	var plcToUpdateMap map[string]*policiesv1.IamPolicy
 	for {
 		start := time.Now()
 		printMap(availablePolicies.PolicyMap)
-		plcToUpdateMap = make(map[string]*mcmv1alpha1.IamPolicy)
+		plcToUpdateMap = make(map[string]*policiesv1.IamPolicy)
 
 		// Loops through all of the iam policies
 		for namespace, policy := range availablePolicies.PolicyMap {
@@ -239,7 +239,7 @@ func PeriodicallyExecGRCPolicies(freq uint) {
 			}
 
 			roleBindingViolationCount, violatedBindings := checkRoleBindingViolations(roleBindingList, policy, namespace)
-			if strings.ToLower(string(policy.Spec.RemediationAction)) == strings.ToLower(string(mcmv1alpha1.Enforce)) {
+			if strings.ToLower(string(policy.Spec.RemediationAction)) == strings.ToLower(string(policiesv1.Enforce)) {
 				glog.V(5).Infof("Enforce is set, but ignored :-)")
 			}
 			if addRoleBindingsViolationCount(policy, roleBindingViolationCount, violatedBindings, namespace) {
@@ -270,7 +270,7 @@ func PeriodicallyExecGRCPolicies(freq uint) {
 	}
 }
 
-func checkUnNamespacedPolicies(plcToUpdateMap map[string]*mcmv1alpha1.IamPolicy) error {
+func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) error {
 	plcMap := convertMaptoPolicyNameKey()
 
 	// group the policies with cluster users and the ones with groups
@@ -309,15 +309,15 @@ func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (us
 	return len(usersMap)
 }
 
-func convertMaptoPolicyNameKey() map[string]*mcmv1alpha1.IamPolicy {
-	plcMap := make(map[string]*mcmv1alpha1.IamPolicy)
+func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
+	plcMap := make(map[string]*policiesv1.IamPolicy)
 	for _, policy := range availablePolicies.PolicyMap {
 		plcMap[policy.Name] = policy
 	}
 	return plcMap
 }
 
-func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *mcmv1alpha1.IamPolicy, namespace string) (roleBindingV int, violatedRoleBindings []string) {
+func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *policiesv1.IamPolicy, namespace string) (roleBindingV int, violatedRoleBindings []string) {
 
 	roleBindingsMap := make(map[string]bool)
 	for _, roleBinding := range roleBindingList.Items {
@@ -340,7 +340,7 @@ func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *mcmv1a
 	return rBindingViolationCount, violatedRoleBindings
 }
 
-func addRoleBindingsViolationCount(plc *mcmv1alpha1.IamPolicy, roleBindingCount int, vRoleBindings []string, namespace string) bool {
+func addRoleBindingsViolationCount(plc *policiesv1.IamPolicy, roleBindingCount int, vRoleBindings []string, namespace string) bool {
 
 	changed := false
 	msg := fmt.Sprintf("%s rolebindings violations detected in namespace `%s`, violated rolebinding : %v", fmt.Sprint(roleBindingCount), namespace, vRoleBindings)
@@ -371,7 +371,7 @@ func addRoleBindingsViolationCount(plc *mcmv1alpha1.IamPolicy, roleBindingCount 
 	return changed
 }
 
-func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, namespace string) bool {
+func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace string) bool {
 
 	changed := false
 	msg := fmt.Sprintf("Number of users with clusteradmin role is %s above the specified limit", fmt.Sprint(userCount))
@@ -401,8 +401,8 @@ func addViolationCount(plc *mcmv1alpha1.IamPolicy, userCount int, namespace stri
 	return changed
 }
 
-func checkComplianceBasedOnDetails(plc *mcmv1alpha1.IamPolicy) {
-	plc.Status.ComplianceState = mcmv1alpha1.Compliant
+func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy) {
+	plc.Status.ComplianceState = policiesv1.Compliant
 	if plc.Status.CompliancyDetails == nil {
 		return
 	}
@@ -417,10 +417,10 @@ func checkComplianceBasedOnDetails(plc *mcmv1alpha1.IamPolicy) {
 			violationNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
 			if len(violationNum) > 0 {
 				if violationNum[7] != fmt.Sprint(0) && strings.HasPrefix(violationNum[0], "Number") {
-					plc.Status.ComplianceState = mcmv1alpha1.NonCompliant
+					plc.Status.ComplianceState = policiesv1.NonCompliant
 				}
 				if violationNum[0] != fmt.Sprint(0) && strings.HasPrefix(violationNum[1], "rolebindings") {
-					plc.Status.ComplianceState = mcmv1alpha1.NonCompliant
+					plc.Status.ComplianceState = policiesv1.NonCompliant
 				}
 			}
 		} else {
@@ -429,41 +429,41 @@ func checkComplianceBasedOnDetails(plc *mcmv1alpha1.IamPolicy) {
 	}
 }
 
-func checkComplianceChangeBasedOnDetails(plc *mcmv1alpha1.IamPolicy) (complianceChanged bool) {
+func checkComplianceChangeBasedOnDetails(plc *policiesv1.IamPolicy) (complianceChanged bool) {
 	//used in case we also want to know not just the compliance state, but also whether the compliance changed or not.
 	previous := plc.Status.ComplianceState
 	if plc.Status.CompliancyDetails == nil {
-		plc.Status.ComplianceState = mcmv1alpha1.UnknownCompliancy
+		plc.Status.ComplianceState = policiesv1.UnknownCompliancy
 		return reflect.DeepEqual(previous, plc.Status.ComplianceState)
 	}
 	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
-		plc.Status.ComplianceState = mcmv1alpha1.UnknownCompliancy
+		plc.Status.ComplianceState = policiesv1.UnknownCompliancy
 		return reflect.DeepEqual(previous, plc.Status.ComplianceState)
 	}
 	if len(plc.Status.CompliancyDetails[plc.Name]) == 0 {
-		plc.Status.ComplianceState = mcmv1alpha1.UnknownCompliancy
+		plc.Status.ComplianceState = policiesv1.UnknownCompliancy
 		return reflect.DeepEqual(previous, plc.Status.ComplianceState)
 	}
-	plc.Status.ComplianceState = mcmv1alpha1.Compliant
+	plc.Status.ComplianceState = policiesv1.Compliant
 	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
 		if len(msgList) > 0 {
 			violationNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
 			if len(violationNum) > 0 {
 				if violationNum[0] != fmt.Sprint(0) {
-					plc.Status.ComplianceState = mcmv1alpha1.NonCompliant
+					plc.Status.ComplianceState = policiesv1.NonCompliant
 				}
 			}
 		} else {
 			return reflect.DeepEqual(previous, plc.Status.ComplianceState)
 		}
 	}
-	if plc.Status.ComplianceState != mcmv1alpha1.NonCompliant {
-		plc.Status.ComplianceState = mcmv1alpha1.Compliant
+	if plc.Status.ComplianceState != policiesv1.NonCompliant {
+		plc.Status.ComplianceState = policiesv1.Compliant
 	}
 	return reflect.DeepEqual(previous, plc.Status.ComplianceState)
 }
 
-func updatePolicyStatus(policies map[string]*mcmv1alpha1.IamPolicy) (*mcmv1alpha1.IamPolicy, error) {
+func updatePolicyStatus(policies map[string]*policiesv1.IamPolicy) (*policiesv1.IamPolicy, error) {
 	for _, instance := range policies { // policies is a map where: key = plc.Name, value = pointer to plc
 		err := reconcilingAgent.Update(context.TODO(), instance)
 		if err != nil {
@@ -473,7 +473,7 @@ func updatePolicyStatus(policies map[string]*mcmv1alpha1.IamPolicy) (*mcmv1alpha
 			createParentPolicyEvent(instance)
 		}
 		{ //TODO we can make this eventing enabled by a flag
-			if instance.Status.ComplianceState == mcmv1alpha1.NonCompliant {
+			if instance.Status.ComplianceState == policiesv1.NonCompliant {
 				reconcilingAgent.recorder.Event(instance, corev1.EventTypeWarning, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 			} else {
 				reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
@@ -492,7 +492,7 @@ func getContainerID(pod corev1.Pod, containerName string) string {
 	return ""
 }
 
-func handleRemovingPolicy(plc *mcmv1alpha1.IamPolicy) {
+func handleRemovingPolicy(plc *policiesv1.IamPolicy) {
 	for k, v := range availablePolicies.PolicyMap {
 		if v.Name == plc.Name {
 			availablePolicies.RemoveObject(k)
@@ -500,7 +500,7 @@ func handleRemovingPolicy(plc *mcmv1alpha1.IamPolicy) {
 	}
 }
 
-func handleAddingPolicy(plc *mcmv1alpha1.IamPolicy) error {
+func handleAddingPolicy(plc *policiesv1.IamPolicy) error {
 
 	allNamespaces, err := common.GetAllNamespaces()
 	if err != nil {
@@ -526,7 +526,7 @@ func handleAddingPolicy(plc *mcmv1alpha1.IamPolicy) error {
 
 //=================================================================
 //deleteExternalDependency in case the CRD was related to non-k8s resource
-func (r *ReconcileGRCPolicy) deleteExternalDependency(instance *mcmv1alpha1.IamPolicy) error {
+func (r *ReconcileGRCPolicy) deleteExternalDependency(instance *policiesv1.IamPolicy) error {
 	glog.V(0).Infof("reason: CRD deletion, subject: policy/%v, namespace: %v, according to policy: none, additional-info: none\n", instance.Name, instance.Namespace)
 	// Ensure that delete implementation is idempotent and safe to invoke
 	// multiple types for same object.
@@ -558,7 +558,7 @@ func removeString(slice []string, s string) (result []string) {
 
 //=================================================================
 // Helper functions that pretty prints a map
-func printMap(myMap map[string]*mcmv1alpha1.IamPolicy) {
+func printMap(myMap map[string]*policiesv1.IamPolicy) {
 	if len(myMap) == 0 {
 		fmt.Println("Waiting for iam policies to be available for processing... ")
 		return
@@ -569,7 +569,7 @@ func printMap(myMap map[string]*mcmv1alpha1.IamPolicy) {
 	}
 }
 
-func createParentPolicyEvent(instance *mcmv1alpha1.IamPolicy) {
+func createParentPolicyEvent(instance *policiesv1.IamPolicy) {
 	if len(instance.OwnerReferences) == 0 {
 		return //there is nothing to do, since no owner is set
 	}
@@ -580,19 +580,19 @@ func createParentPolicyEvent(instance *mcmv1alpha1.IamPolicy) {
 
 	parentPlc := createParentPolicy(instance)
 
-	if instance.Status.ComplianceState == mcmv1alpha1.NonCompliant {
+	if instance.Status.ComplianceState == policiesv1.NonCompliant {
 		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeWarning, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 	} else {
 		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 	}
 }
 
-func createParentPolicy(instance *mcmv1alpha1.IamPolicy) mcmv1alpha1.Policy {
+func createParentPolicy(instance *policiesv1.IamPolicy) policiesv1.Policy {
 	ns := common.ExtractNamespaceLabel(instance)
 	if ns == "" {
 		ns = NamespaceWatched
 	}
-	plc := mcmv1alpha1.Policy{
+	plc := policiesv1.Policy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      instance.OwnerReferences[0].Name,
 			Namespace: ns, // we are making an assumption here that the parent policy is in the watched-namespace passed as flag

@@ -32,7 +32,7 @@ rules:
   - update
   - patch
 - apiGroups:
-  - iam.policies.ibm.com
+  - iam.policies.open-cluster-management.io
   resources:
   - Iampolicies
   verbs:
@@ -44,7 +44,7 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - iam.policies.ibm.com
+  - iam.policies.open-cluster-management.io
   resources:
   - Iampolicies/status
   verbs:

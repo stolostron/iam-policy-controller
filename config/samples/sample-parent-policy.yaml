@@ -1,4 +1,4 @@
-apiVersion: mcm.ibm.com/v1alpha1
+apiVersion: policies.open-cluster-management.io/v1
 kind: Policy
 metadata:
   name: policy-parent
@@ -6,17 +6,17 @@ metadata:
   labels:
     hipaa: "true"
 spec:
-  remediationAction: "enforce" # enforce or inform 
+  remediationAction: "enforce" # enforce or inform
   complianceType: "musthave" # used as default, when missing in a particular sub-template
   namespaces:
     include: ["default"]
     exclude: ["kube*"]
   policy-templates:
-    - apiVersion: iam.policies.ibm.com/v1alpha1
+    - apiVersion: iam.policies.open-cluster-management.io/v1
       kind: IamPolicy
       metadata:
         name: iam-policy-example
-        label: 
+        label:
           category: "System-Integrity"
       spec:
         namespaceSelector:

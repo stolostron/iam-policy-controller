@@ -1,0 +1,23 @@
+apiVersion: iam.policies.open-cluster-management.io/v1
+kind: IamPolicy
+metadata:
+  name: iam-policy-with-owner
+  label:
+    category: "System-Integrity"
+    cluster-namespace: "default" #used to indicate the namespace of the parent policy
+  ownerReferences: # note, policies with owners are not supposed to be created manually, this is only for demo purpose in the absence of mcm
+    - apiVersion: policies.open-cluster-management.io/v1
+      blockOwnerDeletion: false
+      controller: false
+      kind: Policy
+      name: policy-parent
+      uid: b1c43dc7-6127-11e9-b45d-023b10fe828d
+spec:
+  namespaceSelector:
+    include: ["default","kube-*"]
+    exclude: ["kube-system"]
+  #labelSelector:
+    #env: "production"
+  remediationAction: enforce # enforce or inform
+  maxRoleBindingViolationsPerNamespace: 2
+  maxClusterRoleBindingUsers: 3

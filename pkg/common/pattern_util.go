@@ -3,6 +3,7 @@
 // Note to U.S. Government Users Restricted Rights:
 // Use, duplication or disclosure restricted by GSA ADP Schedule
 // Contract with IBM Corp.
+// Copyright (c) 2020 Red Hat, Inc.
 
 package common
 
@@ -11,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	mcmv1alpha1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1alpha1"
+	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1"
 )
 
 // IfMatch check matches
@@ -138,12 +139,12 @@ func Round(num float64) int {
 }
 
 // ExtractNamespaceLabel to find out the cluster-namespace from the label
-func ExtractNamespaceLabel(instance *mcmv1alpha1.IamPolicy) string {
+func ExtractNamespaceLabel(instance *policiesv1.IamPolicy) string {
 	if instance.ObjectMeta.Labels == nil {
 		return ""
 	}
-	if _, ok := instance.ObjectMeta.Labels["cluster-namespace"]; ok {
-		return instance.ObjectMeta.Labels["cluster-namespace"]
+	if _, ok := instance.ObjectMeta.Labels["policies.open-cluster-management.io/cluster-namespace"]; ok {
+		return instance.ObjectMeta.Labels["policies.open-cluster-management.io/cluster-namespace"]
 	}
 	return ""
 }

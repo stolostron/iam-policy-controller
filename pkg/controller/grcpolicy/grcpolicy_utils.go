@@ -60,7 +60,7 @@ func createGenericObjectEvent(name, namespace string) {
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Policy",
-			APIVersion: "policy.mcm.ibm.com/v1alpha1",
+			APIVersion: "policies.open-cluster-management.io/v1",
 		},
 	}
 	data, err := json.Marshal(plc)

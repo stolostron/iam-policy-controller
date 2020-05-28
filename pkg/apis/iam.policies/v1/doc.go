@@ -3,6 +3,7 @@
 // Note to U.S. Government Users Restricted Rights:
 // Use, duplication or disclosure restricted by GSA ADP Schedule
 // Contract with IBM Corp.
+// Copyright (c) 2020 Red Hat, Inc.
 
 // Package v1 contains API Schema definitions for the opencluster.io v1 API group
 // +k8s:openapi-gen=true

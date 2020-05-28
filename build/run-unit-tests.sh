@@ -2,4 +2,4 @@
 set -e
 
 make lint
-make test
+make install-testdependencies

@@ -73,7 +73,7 @@ install-testdependencies:
 	sudo mv /tmp/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH} /usr/local/kubebuilder
 
 # Run tests
-test:  fmt vet
+test:  fmt vet install-testdependencies
 	go test ./pkg/... ./cmd/... -v -coverprofile cover.out
 
 dependencies:

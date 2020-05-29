@@ -1,4 +1,4 @@
-apiVersion: iam.policies.open-cluster-management.io/v1
+apiVersion: policies.open-cluster-management.io/v1
 kind: IamPolicy
 metadata:
   name: iam-policy-example

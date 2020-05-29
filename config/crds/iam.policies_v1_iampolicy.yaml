@@ -4,9 +4,9 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: iampolicies.iam.policies.open-cluster-management.io
+  name: iampolicies.policies.open-cluster-management.io
 spec:
-  group: iam.policies.open-cluster-management.io
+  group: policies.open-cluster-management.io
   names:
     kind: IamPolicy
     plural: iampolicies

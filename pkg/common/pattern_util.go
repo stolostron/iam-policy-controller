@@ -143,8 +143,8 @@ func ExtractNamespaceLabel(instance *policiesv1.IamPolicy) string {
 	if instance.ObjectMeta.Labels == nil {
 		return ""
 	}
-	if _, ok := instance.ObjectMeta.Labels["policies.open-cluster-management.io/cluster-namespace"]; ok {
-		return instance.ObjectMeta.Labels["policies.open-cluster-management.io/cluster-namespace"]
+	if _, ok := instance.ObjectMeta.Labels["policy.open-cluster-management.io/cluster-namespace"]; ok {
+		return instance.ObjectMeta.Labels["policy.open-cluster-management.io/cluster-namespace"]
 	}
 	return ""
 }

@@ -1,4 +1,4 @@
-apiVersion: policies.open-cluster-management.io/v1
+apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
   name: policy-parent
@@ -12,7 +12,7 @@ spec:
     include: ["default"]
     exclude: ["kube*"]
   policy-templates:
-    - apiVersion: policies.open-cluster-management.io/v1
+    - apiVersion: policy.open-cluster-management.io/v1
       kind: IamPolicy
       metadata:
         name: iam-policy-example

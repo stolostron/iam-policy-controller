@@ -11,7 +11,7 @@ The controller can be run as a stand-alone program within IBM Cloud Private. Its
 The controller watches for policy registered with kind `IamPolicy` objects in Kubernetes. Following is an example spec of a `IamPolicy` object:
 
 ```yaml
-apiVersion: policies.open-cluster-management.io/v1
+apiVersion: policy.open-cluster-management.io/v1
 kind: IamPolicy
 metadata:
   name: iam-grc-policy

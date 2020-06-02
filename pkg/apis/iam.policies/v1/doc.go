@@ -10,5 +10,5 @@
 // +k8s:deepcopy-gen=package,register
 // +k8s:conversion-gen=github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies
 // +k8s:defaulter-gen=TypeMeta
-// +groupName=policies.open-cluster-management.io
+// +groupName=policy.open-cluster-management.io
 package v1

@@ -20,7 +20,7 @@ import (
 	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/iam.policies/v1"
 	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/api/rbac/v1"
+	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -170,7 +170,7 @@ func (r *ReconcileGRCPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
+			handleRemovingPolicy(request.NamespacedName.Name)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -189,11 +189,8 @@ func (r *ReconcileGRCPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 		instance.Status.CompliancyDetails = nil //reset CompliancyDetails
 		handleAddingPolicy(instance)
-	} else {
-		handleRemovingPolicy(instance)
-		// The object is being deleted
-		return reconcile.Result{}, nil
 	}
+
 	glog.V(3).Infof("reason: successful processing, subject: policy/%v, namespace: %v, according to policy: %v, additional-info: none\n", instance.Name, instance.Namespace, instance.Name)
 	return reconcile.Result{}, nil
 }
@@ -492,9 +489,9 @@ func getContainerID(pod corev1.Pod, containerName string) string {
 	return ""
 }
 
-func handleRemovingPolicy(plc *policiesv1.IamPolicy) {
+func handleRemovingPolicy(name string) {
 	for k, v := range availablePolicies.PolicyMap {
-		if v.Name == plc.Name {
+		if v.Name == name {
 			availablePolicies.RemoveObject(k)
 		}
 	}

@@ -1,0 +1,7 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: IamPolicy
+metadata:
+  name: example-iampolicy
+spec:
+  # Add fields here
+  size: 3

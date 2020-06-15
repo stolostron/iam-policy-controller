@@ -1,16 +1,10 @@
-// Licensed Materials - Property of IBM
-// (c) Copyright IBM Corporation 2018. All Rights Reserved.
-// Note to U.S. Government Users Restricted Rights:
-// Use, duplication or disclosure restricted by GSA ADP Schedule
-// Contract with IBM Corp.
-
 package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// RemediationAction : enforce or inform
+/// RemediationAction : enforce or inform
 type RemediationAction string
 
 const (
@@ -41,7 +35,7 @@ type Target struct {
 	Exclude []string `json:"exclude,omitempty"`
 }
 
-// IamPolicySpec defines the desired state of GRCPolicy
+// IamPolicySpec defines the desired state of IamPolicy
 type IamPolicySpec struct {
 	// enforce, inform
 	RemediationAction RemediationAction `json:"remediationAction,omitempty"`
@@ -59,28 +53,20 @@ type IamPolicySpec struct {
 // IamPolicyStatus defines the observed state of IamPolicy
 type IamPolicyStatus struct {
 	ComplianceState   ComplianceState                `json:"compliant,omitempty"`         // Compliant, NonCompliant, UnkownCompliancy
-	CompliancyDetails map[string]map[string][]string `json:"compliancyDetails,omitempty"` // reason for non-compliancy
+	CompliancyDetails map[string]string `json:"compliancyDetails,omitempty"` // reason for non-compliancy
 }
 
-// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// IamPolicy is the Schema for the policies API
-// +k8s:openapi-gen=true
+// IamPolicy is the Schema for the iampolicies API
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:path=iampolicies,scope=Namespaced
 type IamPolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   IamPolicySpec   `json:"spec,omitempty"`
 	Status IamPolicyStatus `json:"status,omitempty"`
-}
-
-// Policy is a specification for a Policy resource
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +genclient
-type Policy struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -92,17 +78,6 @@ type IamPolicyList struct {
 	Items           []IamPolicy `json:"items"`
 }
 
-// PolicyList is a list of Policy resources
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:lister-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type PolicyList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []Policy `json:"items"`
-}
-
 func init() {
 	SchemeBuilder.Register(&IamPolicy{}, &IamPolicyList{})
-	SchemeBuilder.Register(&Policy{}, &PolicyList{})
 }

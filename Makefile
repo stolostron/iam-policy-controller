@@ -69,8 +69,9 @@ copyright-check:
 	./build/copyright-check.sh $(TRAVIS_BRANCH) $(TRAVIS_PULL_REQUEST_BRANCH)
 
 # Run tests
-test:  fmt vet
-	go test ./pkg/... ./cmd/... -v -coverprofile cover.out
+test:  dependencies
+	go test -coverprofile=coverage.out -json ./... > report.json
+	cat report.json
 
 dependencies:
 	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/

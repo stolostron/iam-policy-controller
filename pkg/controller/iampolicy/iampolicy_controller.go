@@ -1,10 +1,15 @@
+// Licensed Materials - Property of IBM
+// (c) Copyright IBM Corporation 2018. All Rights Reserved.
+// Note to U.S. Government Users Restricted Rights:
+// Use, duplication or disclosure restricted by GSA ADP Schedule
+// Contract with IBM Corp.
 // Copyright (c) 2020 Red Hat, Inc.
 package iampolicy
 
 import (
 	"context"
-	"reflect"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -16,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-  "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,7 +49,7 @@ var availablePolicies common.SyncedPolicyMap
 var PlcChan chan *policiesv1.IamPolicy
 
 // KubeClient a k8s client used for k8s native resources
-var KubeClient *kubernetes.Clientset
+var KubeClient *kubernetes.Interface
 
 var reconcilingAgent *ReconcileIamPolicy
 
@@ -55,7 +60,7 @@ var NamespaceWatched string
 var EventOnParent string
 
 // Initialize to initialize some controller varaibles
-func Initialize(kClient *kubernetes.Clientset, mgr manager.Manager, clsName, namespace, eventParent string) (err error) {
+func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, namespace, eventParent string) (err error) {
 	KubeClient = kClient
 	PlcChan = make(chan *policiesv1.IamPolicy, 100) //buffering up to 100 policies for update
 
@@ -69,7 +74,6 @@ func Initialize(kClient *kubernetes.Clientset, mgr manager.Manager, clsName, nam
 	return nil
 }
 
-
 // Add creates a new IamPolicy Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
@@ -79,8 +83,8 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileIamPolicy{
-		client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
+		client:   mgr.GetClient(),
+		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetEventRecorderFor("iampolicy-controller"),
 	}
 }
@@ -120,10 +124,9 @@ var _ reconcile.Reconciler = &ReconcileIamPolicy{}
 type ReconcileIamPolicy struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client   client.Client
+	scheme   *runtime.Scheme
 	recorder record.EventRecorder
-
 }
 
 // Reconcile reads that state of the cluster for a IamPolicy object and makes changes based on the state read
@@ -169,7 +172,7 @@ func (r *ReconcileIamPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		handleAddingPolicy(instance)
 	}
 
-  reqLogger.Info("Reconcile complete.")
+	reqLogger.Info("Reconcile complete.")
 	return reconcile.Result{}, nil
 }
 
@@ -192,8 +195,8 @@ func ensureDefaultLabel(instance *policiesv1.IamPolicy) (updateNeeded bool) {
 	return false
 }
 
-// PeriodicallyExecGRCPolicies always check status - let this be the only function in the controller
-func PeriodicallyExecGRCPolicies(freq uint) {
+// PeriodicallyExecIamPolicies always check status - let this be the only function in the controller
+func PeriodicallyExecIamPolicies(freq uint) {
 	var plcToUpdateMap map[string]*policiesv1.IamPolicy
 	for {
 		start := time.Now()
@@ -207,7 +210,7 @@ func PeriodicallyExecGRCPolicies(freq uint) {
 			//update the status internal map
 			//no difference between enforce and inform here
 
-			roleBindingList, err := common.KubeClient.RbacV1().RoleBindings(namespace).List(metav1.ListOptions{LabelSelector: labels.Set(policy.Spec.LabelSelector).String()})
+			roleBindingList, err := (*common.KubeClient).RbacV1().RoleBindings(namespace).List(metav1.ListOptions{LabelSelector: labels.Set(policy.Spec.LabelSelector).String()})
 			if err != nil {
 				glog.Errorf("reason: communication error, subject: k8s API server, namespace: %v, according to policy: %v, additional-info: %v\n", namespace, policy.Name, err)
 				continue
@@ -246,7 +249,7 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 	// group the policies with cluster users and the ones with groups
 	// take the plc with min users and groups and make it your baseline
 
-	ClusteRoleBindingList, err := common.KubeClient.RbacV1().ClusterRoleBindings().List(metav1.ListOptions{})
+	ClusteRoleBindingList, err := (*common.KubeClient).RbacV1().ClusterRoleBindings().List(metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("reason: communication error, subject: k8s API server, namespace: all, according to policy: none, additional-info: %v\n", err)
 		return err

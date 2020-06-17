@@ -1,3 +1,8 @@
+// Licensed Materials - Property of IBM
+// (c) Copyright IBM Corporation 2018. All Rights Reserved.
+// Note to U.S. Government Users Restricted Rights:
+// Use, duplication or disclosure restricted by GSA ADP Schedule
+// Contract with IBM Corp.
 // Copyright (c) 2020 Red Hat, Inc.
 package main
 
@@ -36,7 +41,6 @@ import (
 
 	common "github.com/open-cluster-management/iam-policy-controller/pkg/common"
 	policyStatusHandler "github.com/open-cluster-management/iam-policy-controller/pkg/controller/iampolicy"
-
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -145,12 +149,11 @@ func main() {
 	addMetrics(ctx, cfg)
 
 	// Initialize some variables
-	generatedClient := kubernetes.NewForConfigOrDie(mgr.GetConfig())
-	common.Initialize(generatedClient, cfg)
-	policyStatusHandler.Initialize(generatedClient, mgr, clusterName, namespace, eventOnParent)
-	// PeriodicallyExecGRCPolicies is the go-routine that periodically checks the policies and does the needed work to make sure the desired state is achieved
-	go policyStatusHandler.PeriodicallyExecGRCPolicies(frequency)
-
+	var generatedClient kubernetes.Interface = kubernetes.NewForConfigOrDie(mgr.GetConfig())
+	common.Initialize(&generatedClient, cfg)
+	policyStatusHandler.Initialize(&generatedClient, mgr, clusterName, namespace, eventOnParent)
+	// PeriodicallyExecIamPolicies is the go-routine that periodically checks the policies and does the needed work to make sure the desired state is achieved
+	go policyStatusHandler.PeriodicallyExecIamPolicies(frequency)
 
 	log.Info("Starting the Cmd.")
 

@@ -5,8 +5,8 @@
 # Copyright (c) 2020 Red Hat, Inc.
 
 # Git vars
-GITHUB_USER ?=
-GITHUB_TOKEN ?=
+GITHUB_USER ?=ckandag
+GITHUB_TOKEN ?=821e8fd9773487a9d30ecd3214aae0ed34a15d20
 
 # CICD BUILD HARNESS
 ####################
@@ -73,7 +73,7 @@ install-testdependencies:
 	sudo mv /tmp/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH} /usr/local/kubebuilder
 
 # Run tests
-test:  fmt vet install-testdependencies
+test:  fmt vet 
 	go test ./pkg/... ./cmd/... -v -coverprofile cover.out
 
 dependencies:

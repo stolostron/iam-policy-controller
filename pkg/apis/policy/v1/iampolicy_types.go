@@ -53,7 +53,7 @@ type IamPolicySpec struct {
 // IamPolicyStatus defines the observed state of IamPolicy
 type IamPolicyStatus struct {
 	ComplianceState   ComplianceState                `json:"compliant,omitempty"`         // Compliant, NonCompliant, UnkownCompliancy
-	CompliancyDetails map[string]string `json:"compliancyDetails,omitempty"` // reason for non-compliancy
+	CompliancyDetails map[string]map[string][]string `json:"compliancyDetails,omitempty"` // reason for non-compliancy
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -76,6 +76,24 @@ type IamPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []IamPolicy `json:"items"`
+}
+
+// Policy is a specification for a Policy resource
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient.
+type Policy struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+}
+
+// PolicyList is a list of Policy resources
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:lister-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object.
+type PolicyList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []Policy `json:"items"`
 }
 
 func init() {

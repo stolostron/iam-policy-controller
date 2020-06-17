@@ -1,3 +1,4 @@
+// Copyright (c) 2020 Red Hat, Inc.
 package main
 
 import (
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
@@ -31,6 +33,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
+
+	common "github.com/open-cluster-management/iam-policy-controller/pkg/common"
+	policyStatusHandler "github.com/open-cluster-management/iam-policy-controller/pkg/controller/iampolicy"
+
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -56,6 +62,13 @@ func main() {
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
+
+	var clusterName, namespace, eventOnParent string
+	var frequency uint
+	flag.StringVar(&namespace, "watch-ns", "default", "Watched Kubernetes namespace")
+	flag.UintVar(&frequency, "update-frequency", 10, "The status update frequency (in seconds) of a mutation policy")
+	flag.StringVar(&eventOnParent, "parent-event", "ifpresent", "to also send status events on parent policy. options are: yes/no/ifpresent")
+	flag.StringVar(&clusterName, "cluster-name", "mcm-managed-cluster", "Name of the cluster")
 
 	pflag.Parse()
 
@@ -130,6 +143,14 @@ func main() {
 
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
+
+	// Initialize some variables
+	generatedClient := kubernetes.NewForConfigOrDie(mgr.GetConfig())
+	common.Initialize(generatedClient, cfg)
+	policyStatusHandler.Initialize(generatedClient, mgr, clusterName, namespace, eventOnParent)
+	// PeriodicallyExecGRCPolicies is the go-routine that periodically checks the policies and does the needed work to make sure the desired state is achieved
+	go policyStatusHandler.PeriodicallyExecGRCPolicies(frequency)
+
 
 	log.Info("Starting the Cmd.")
 

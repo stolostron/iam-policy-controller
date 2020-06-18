@@ -70,8 +70,7 @@ copyright-check:
 
 # Run tests
 test:  dependencies
-	go test -coverprofile=coverage.out -json ./... > report.json
-	cat report.json
+	go test -v  -coverprofile=coverage.out -json ./...
 
 dependencies:
 	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/

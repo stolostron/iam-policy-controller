@@ -169,9 +169,15 @@ func (r *ReconcileIamPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 			}
 		}
 		instance.Status.CompliancyDetails = nil //reset CompliancyDetails
-		handleAddingPolicy(instance)
-	}
 
+		reqLogger.Info("Iam policy was found, adding it...")
+		err = handleAddingPolicy(instance)
+		if err != nil {
+			reqLogger.Info("Failed to handleAddingPolicy", "err", err)
+			return reconcile.Result{}, err
+		}
+
+	}
 	reqLogger.Info("Reconcile complete.")
 	return reconcile.Result{}, nil
 }
@@ -225,7 +231,10 @@ func PeriodicallyExecIamPolicies(freq uint) {
 			}
 			checkComplianceBasedOnDetails(policy)
 		}
-		checkUnNamespacedPolicies(plcToUpdateMap)
+		err = checkUnNamespacedPolicies(plcToUpdateMap)
+		if err != nil {
+			glog.Errorf("Error checking un-namespaced policies, additional info %v \n",err)
+		}
 
 		//update status of all policies that changed:
 		faultyPlc, err := updatePolicyStatus(plcToUpdateMap)

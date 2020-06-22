@@ -151,7 +151,7 @@ func main() {
 	// Initialize some variables
 	var generatedClient kubernetes.Interface = kubernetes.NewForConfigOrDie(mgr.GetConfig())
 	common.Initialize(&generatedClient, cfg)
-	policyStatusHandler.Initialize(&generatedClient, mgr, clusterName, namespace, eventOnParent)
+	policyStatusHandler.Initialize(&generatedClient, mgr, clusterName, namespace, eventOnParent)/* #nosec G104 */
 	// PeriodicallyExecIamPolicies is the go-routine that periodically checks the policies and does the needed work to make sure the desired state is achieved
 	go policyStatusHandler.PeriodicallyExecIamPolicies(frequency)
 

@@ -231,7 +231,7 @@ func PeriodicallyExecIamPolicies(freq uint) {
 			}
 			checkComplianceBasedOnDetails(policy)
 		}
-		err = checkUnNamespacedPolicies(plcToUpdateMap)
+		err := checkUnNamespacedPolicies(plcToUpdateMap)
 		if err != nil {
 			glog.Errorf("Error checking un-namespaced policies, additional info %v \n",err)
 		}

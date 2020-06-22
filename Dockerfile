@@ -12,7 +12,7 @@ RUN microdnf update && \
       groupadd -r controller && adduser -rm -g controller -u 10000 controller && \
       microdnf clean all
 
-ADD iam-policy_$GOARCH /usr/bin/iam-policy-controller
+ADD iam-policy /usr/bin/iam-policy-controller
 
 RUN chmod a+x /usr/bin/iam-policy-controller
 

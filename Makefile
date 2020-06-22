@@ -30,33 +30,15 @@ ARCH = $(shell uname -m)
 ifeq ($(ARCH), x86_64)
     ARCH = amd64
 endif
-GOARCH := $(ARCH)
-GOOS := linux
+
+GOARCH = $(shell go env GOARCH)
+GOOS = $(shell go env GOOS)
 
 # Only use git commands if it exists
 ifdef GIT
 GIT_COMMIT      = $(shell git rev-parse --short HEAD)
 GIT_REMOTE_URL  = $(shell git config --get remote.origin.url)
 endif
-
-# Image settings
-
-IMAGE_NAME ?= iam-policy-controller
-IMAGE_VERSION := 1.0.0
-IMAGE_DESCRIPTION =IAM Policy Controller
-
-DOCKER_REGISTRY ?= quay.io
-DOCKER_NAMESPACE ?= open-cluster-management
-DOCKER_BUILD_TAG ?= $(IMAGE_VERSION)-$(GIT_COMMIT)
-DOCKER_FILE := Dockerfile
-DOCKER_BUILD_DIR := $(TRAVIS_BUILD_DIR)
-DOCKER_BUILD_OPTS=--build-arg "VCS_REF=$(GIT_COMMIT)" \
-	--build-arg "VCS_URL=$(GIT_REMOTE_URL)" \
-	--build-arg "IMAGE_NAME=$(IMAGE_NAME)" \
-	--build-arg "IMAGE_DESCRIPTION=$(IMAGE_DESCRIPTION)" \
-	--build-arg "SUMMARY=$(IMAGE_DESCRIPTION)" \
-	--build-arg "GOARCH=$(GOARCH)"
-
 
 .PHONY: all lint test dependencies build image run deploy install fmt vet generate
 
@@ -79,11 +61,14 @@ dependencies:
 	go mod download
 
 build:
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./iam-policy_$(GOARCH) ./cmd/manager
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./iam-policy ./cmd/manager
 
-image:
-	@make DOCKER_BUILD_OPTS=$(DOCKER_BUILD_OPTS) docker:build
-	@make docker:tag
+local-test-image: export COMPONENT_INIT_COMMAND=./build/install-dependencies.sh
+local-test-image: export COMPONENT_BUILD_COMMAND=./build/build.sh
+local-test-image: export COMPONENT_TAG_EXTENSION=-localtest
+local-test-image:
+	echo $(COMPONENT_INIT_COMMAND)
+	@make component/build
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet

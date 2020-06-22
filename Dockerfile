@@ -5,7 +5,6 @@ ARG VCS_URL
 ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG SUMMARY
-ARG GOARCH
 
 RUN microdnf update && \
       microdnf install shadow-utils procps && \

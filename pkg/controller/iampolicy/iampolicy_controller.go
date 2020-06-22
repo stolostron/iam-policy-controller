@@ -143,6 +143,10 @@ func (r *ReconcileIamPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling IamPolicy")
 
+	if reconcilingAgent == nil {
+		reconcilingAgent = r
+	}
+
 	// Fetch the IamPolicy instance
 	instance := &policiesv1.IamPolicy{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)

@@ -69,10 +69,10 @@ func main() {
 
 	var clusterName, namespace, eventOnParent string
 	var frequency uint
-	flag.StringVar(&namespace, "watch-ns", "default", "Watched Kubernetes namespace")
-	flag.UintVar(&frequency, "update-frequency", 10, "The status update frequency (in seconds) of a mutation policy")
-	flag.StringVar(&eventOnParent, "parent-event", "ifpresent", "to also send status events on parent policy. options are: yes/no/ifpresent")
-	flag.StringVar(&clusterName, "cluster-name", "mcm-managed-cluster", "Name of the cluster")
+	pflag.StringVar(&namespace, "watch-ns", "default", "Watched Kubernetes namespace")
+	pflag.UintVar(&frequency, "update-frequency", 10, "The status update frequency (in seconds) of a mutation policy")
+	pflag.StringVar(&eventOnParent, "parent-event", "ifpresent", "to also send status events on parent policy. options are: yes/no/ifpresent")
+	pflag.StringVar(&clusterName, "cluster-name", "mcm-managed-cluster", "Name of the cluster")
 
 	pflag.Parse()
 

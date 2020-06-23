@@ -1,18 +1,17 @@
-FROM registry.access.redhat.com/ubi7/ubi-minimal:7.8-237
+FROM registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 ARG VCS_REF
 ARG VCS_URL
 ARG IMAGE_NAME
 ARG IMAGE_DESCRIPTION
 ARG SUMMARY
-ARG GOARCH
 
 RUN microdnf update && \
       microdnf install shadow-utils procps && \
       groupadd -r controller && adduser -rm -g controller -u 10000 controller && \
       microdnf clean all
 
-ADD iam-policy_$GOARCH /usr/bin/iam-policy-controller
+ADD iam-policy /usr/bin/iam-policy-controller
 
 RUN chmod a+x /usr/bin/iam-policy-controller
 

@@ -45,7 +45,7 @@ jobs:
         - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
         - make component/build
         - make component/push
-        - if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then 
+        - if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
             export COMPONENT_NEWTAG="latest-dev";
             make component/tag;
             export COMPONENT_VERSION="latest";
@@ -58,6 +58,7 @@ jobs:
       script:
         - make copyright-check TRAVIS_BRANCH=${TRAVIS_BRANCH} TRAVIS_PULL_REQUEST_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH}
         - make component/test/unit
+        - make dependencies
         - make sonar/go
     - stage: test-e2e
       name: "Run e2e tests"

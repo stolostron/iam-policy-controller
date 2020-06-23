@@ -7,3 +7,8 @@ build-harness-extensions
 !vbh/build-harness
 !vbh/build-harness-extensions
 .vscode/launch.json
+iam-policy_amd64
+cover.out
+coverage.out
+coverage.out
+iam-policy

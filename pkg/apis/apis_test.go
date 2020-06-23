@@ -7,13 +7,14 @@
 package apis
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// AddToSchemes may be used to add all resources defined in the project to a Scheme
-var AddToSchemes runtime.SchemeBuilder
-
-// AddToScheme adds all Resources to the Scheme
-func AddToScheme(s *runtime.Scheme) error {
-	return AddToSchemes.AddToScheme(s)
+func TestAddToScheme(t *testing.T) {
+	scheme := runtime.NewScheme()
+	err := AddToScheme(scheme)
+	assert.Nil(t, err)
 }

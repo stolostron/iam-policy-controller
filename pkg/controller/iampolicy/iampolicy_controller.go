@@ -57,6 +57,7 @@ var NamespaceWatched string
 // EventOnParent specifies if we also want to send events to the parent policy. Available options are yes/no/ifpresent
 var EventOnParent string
 
+// A way to allow exiting out of the periodic policy check loop
 var exitExecLoop string
 
 // Initialize to initialize some controller varaibles

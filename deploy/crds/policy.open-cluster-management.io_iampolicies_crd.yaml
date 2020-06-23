@@ -39,10 +39,6 @@ spec:
               description: Maximum number of cluster role binding users still valid
                 before it is considered non-compliant
               type: integer
-            maxRoleBindingViolationsPerNamespace:
-              description: Maximum number of iam rolebindings violations still valid
-                before it is considered non-compliant
-              type: integer
             namespaceSelector:
               description: Selecting a list of namespaces where the policy applies
               properties:
@@ -78,4 +74,3 @@ spec:
   - name: v1
     served: true
     storage: true
-

@@ -48,8 +48,6 @@ type IamPolicySpec struct {
 	// Selecting a list of namespaces where the policy applies
 	NamespaceSelector Target            `json:"namespaceSelector,omitempty"`
 	LabelSelector     map[string]string `json:"labelSelector,omitempty"`
-	// Maximum number of iam rolebindings violations still valid before it is considered non-compliant
-	MaxRoleBindingViolationsPerNamespace int `json:"maxRoleBindingViolationsPerNamespace,omitempty"`
 	// Maximum number of cluster role binding users still valid before it is considered non-compliant
 	MaxClusterRoleBindingUsers int `json:"maxClusterRoleBindingUsers,omitempty"`
 	// low, medium, or high

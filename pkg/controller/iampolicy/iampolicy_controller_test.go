@@ -40,7 +40,7 @@ func TestReconcile(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: policiesv1.IamPolicySpec{
-			MaxRoleBindingViolationsPerNamespace: 1,
+			MaxClusterRoleBindingUsers:   1,
 		},
 	}
 
@@ -72,7 +72,7 @@ func TestReconcile(t *testing.T) {
 	t.Log(res)
 }
 
-/*func TestPeriodicallyExecIamPolicies(t *testing.T) {
+func TestPeriodicallyExecIamPolicies(t *testing.T) {
 	var (
 		name      = "foo"
 		namespace = "default"
@@ -101,7 +101,7 @@ func TestReconcile(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: policiesv1.IamPolicySpec{
-			MaxRoleBindingViolationsPerNamespace: 1,
+			MaxClusterRoleBindingUsers:  1,
 		},
 	}
 
@@ -129,7 +129,7 @@ func TestReconcile(t *testing.T) {
 	err = handleAddingPolicy(&iamPolicy)
 	assert.Nil(t, err)
 	PeriodicallyExecIamPolicies(1)
-}*/
+}
 
 func TestCheckUnNamespacedPolicies(t *testing.T) {
 	var simpleClient kubernetes.Interface = testclient.NewSimpleClientset()
@@ -209,7 +209,6 @@ func TestCheckRoleBindingViolations(t *testing.T) {
 		Items: items,
 	}
 	var iamPolicySpec = policiesv1.IamPolicySpec{
-		MaxRoleBindingViolationsPerNamespace: 1,
 		MaxClusterRoleBindingUsers:           1,
 	}
 	iamPolicy.Spec = iamPolicySpec

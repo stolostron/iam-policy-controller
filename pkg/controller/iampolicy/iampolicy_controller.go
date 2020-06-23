@@ -213,7 +213,6 @@ func PeriodicallyExecIamPolicies(freq uint) {
 		printMap(availablePolicies.PolicyMap)
 		plcToUpdateMap = make(map[string]*policiesv1.IamPolicy)
 
-    glog.Errorf("EventOnParent := %s", EventOnParent)
 		// Loops through all of the iam policies
 		for namespace, policy := range availablePolicies.PolicyMap {
 			//For each namespace, fetch all the RoleBindings in that NS according to the policy selector
@@ -454,10 +453,8 @@ func updatePolicyStatus(policies map[string]*policiesv1.IamPolicy) (*policiesv1.
 	for _, instance := range policies { // policies is a map where: key = plc.Name, value = pointer to plc
 		err := reconcilingAgent.client.Status().Update(context.TODO(), instance)
 		if err != nil {
-			glog.Errorf("Update instance %v, err := %v", instance, err)
 			return instance, err
 		}
-		glog.Errorf("EventOnParent := %s", EventOnParent)
 		if EventOnParent != "no" {
 			createParentPolicyEvent(instance)
 		}
@@ -472,7 +469,7 @@ func updatePolicyStatus(policies map[string]*policiesv1.IamPolicy) (*policiesv1.
 	return nil, nil
 }
 
-func getContainerID(pod corev1.Pod, containerName string) string{
+func getContainerID(pod corev1.Pod, containerName string) string {
 	for _, containerStatus := range pod.Status.ContainerStatuses {
 		if containerStatus.Name == containerName {
 			return containerStatus.ContainerID

@@ -5,8 +5,8 @@
 # Copyright (c) 2020 Red Hat, Inc.
 
 # Git vars
-GITHUB_USER ?=ckandag
-GITHUB_TOKEN ?=821e8fd9773487a9d30ecd3214aae0ed34a15d20
+GITHUB_USER ?=
+GITHUB_TOKEN ?=
 
 # CICD BUILD HARNESS
 ####################
@@ -61,7 +61,7 @@ dependencies:
 	go mod download
 
 build:
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./iam-policy ./cmd/manager
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) go build -a -tags netgo -o ./iam-policy ./cmd/manager
 
 local-test-image: export COMPONENT_INIT_COMMAND=./build/install-dependencies.sh
 local-test-image: export COMPONENT_BUILD_COMMAND=./build/build.sh

@@ -128,6 +128,7 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 	iamPolicy.Spec.NamespaceSelector.Include = target
 	err = handleAddingPolicy(&iamPolicy)
 	assert.Nil(t, err)
+	exitExecLoop="true"
 	PeriodicallyExecIamPolicies(1)
 }
 
@@ -191,30 +192,6 @@ func TestCheckAllClusterLevel(t *testing.T) {
 	assert.Equal(t, 1, users)
 }
 
-func TestCheckRoleBindingViolations(t *testing.T) {
-	var subject = sub.Subject{
-		APIGroup:  "",
-		Kind:      "User",
-		Name:      "user1",
-		Namespace: "default",
-	}
-	var subjects = []sub.Subject{}
-	subjects = append(subjects, subject)
-	var roleBinding = sub.RoleBinding{
-		Subjects: subjects,
-	}
-	var items = []sub.RoleBinding{}
-	items = append(items, roleBinding)
-	var roleBindingList = sub.RoleBindingList{
-		Items: items,
-	}
-	var iamPolicySpec = policiesv1.IamPolicySpec{
-		MaxClusterRoleBindingUsers:           1,
-	}
-	iamPolicy.Spec = iamPolicySpec
-	checkRoleBindingViolations(&roleBindingList, &iamPolicy, "default")
-}
-
 func TestCreateParentPolicy(t *testing.T) {
 	var ownerReference = metav1.OwnerReference{
 		Name: "foo",
@@ -246,7 +223,6 @@ func TestConvertPolicyStatusToString(t *testing.T) {
 	iamPolicy.Status = iamPolicyStatus
 	var policyInString = convertPolicyStatusToString(&iamPolicy)
 	assert.NotNil(t, policyInString)
-	checkComplianceChangeBasedOnDetails(&iamPolicy)
 	checkComplianceBasedOnDetails(&iamPolicy)
 	addViolationCount(&iamPolicy, 1, "default")
 }

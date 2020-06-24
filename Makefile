@@ -52,7 +52,7 @@ copyright-check:
 
 # Run tests
 test:  dependencies
-	go test -v  -coverprofile=coverage.out -json ./...
+	go test -v  -coverprofile=coverage.out  ./...
 
 dependencies:
 	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/
@@ -66,8 +66,8 @@ build:
 local-test-image: export COMPONENT_INIT_COMMAND=./build/install-dependencies.sh
 local-test-image: export COMPONENT_BUILD_COMMAND=./build/build.sh
 local-test-image: export COMPONENT_TAG_EXTENSION=-localtest
+local-test-image: export GOOS=linux
 local-test-image:
-	echo $(COMPONENT_INIT_COMMAND)
 	@make component/build
 
 # Run against the configured Kubernetes cluster in ~/.kube/config

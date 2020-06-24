@@ -29,6 +29,4 @@ spec:
      severity: medium # low, medium, or high
   # Maximum number of cluster role binding still valid before it is considered as non-compliant
   maxClusterRoleBindingUsers: 5
-  # Maximum number of iam role bindings violations still valid before it is considered as non-compliant
-  maxRoleBindingViolationsPerNamespace: 2
 ```

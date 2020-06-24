@@ -9,7 +9,6 @@ package iampolicy
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
@@ -20,7 +19,6 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
@@ -58,6 +56,9 @@ var NamespaceWatched string
 
 // EventOnParent specifies if we also want to send events to the parent policy. Available options are yes/no/ifpresent
 var EventOnParent string
+
+// A way to allow exiting out of the periodic policy check loop
+var exitExecLoop string
 
 // Initialize to initialize some controller varaibles
 func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, namespace, eventParent string) (err error) {
@@ -213,28 +214,7 @@ func PeriodicallyExecIamPolicies(freq uint) {
 		printMap(availablePolicies.PolicyMap)
 		plcToUpdateMap = make(map[string]*policiesv1.IamPolicy)
 
-		// Loops through all of the iam policies
-		for namespace, policy := range availablePolicies.PolicyMap {
-			//For each namespace, fetch all the RoleBindings in that NS according to the policy selector
-			//For each RoleBindings get the number of users
-			//update the status internal map
-			//no difference between enforce and inform here
-
-			roleBindingList, err := (*common.KubeClient).RbacV1().RoleBindings(namespace).List(metav1.ListOptions{LabelSelector: labels.Set(policy.Spec.LabelSelector).String()})
-			if err != nil {
-				glog.Errorf("reason: communication error, subject: k8s API server, namespace: %v, according to policy: %v, additional-info: %v\n", namespace, policy.Name, err)
-				continue
-			}
-
-			roleBindingViolationCount, violatedBindings := checkRoleBindingViolations(roleBindingList, policy, namespace)
-			if strings.ToLower(string(policy.Spec.RemediationAction)) == strings.ToLower(string(policiesv1.Enforce)) {
-				glog.V(5).Infof("Enforce is set, but ignored :-)")
-			}
-			if addRoleBindingsViolationCount(policy, roleBindingViolationCount, violatedBindings, namespace) {
-				plcToUpdateMap[policy.Name] = policy
-			}
-			checkComplianceBasedOnDetails(policy)
-		}
+		//currently no support for perNamespace rolebindings
 		err := checkUnNamespacedPolicies(plcToUpdateMap)
 		if err != nil {
 			glog.Errorf("Error checking un-namespaced policies, additional info %v \n",err)
@@ -246,6 +226,10 @@ func PeriodicallyExecIamPolicies(freq uint) {
 			glog.Errorf("reason: policy update error, subject: policy/%v, namespace: %v, according to policy: %v, additional-info: %v\n", faultyPlc.Name, faultyPlc.Namespace, faultyPlc.Name, err)
 		}
 
+		//check if continue
+		if(exitExecLoop == "true"){
+			return
+		}
 		//making sure that if processing is > freq we don't sleep
 		//if freq > processing we sleep for the remaining duration
 		elapsed := time.Since(start) / 1000000000 // convert to seconds
@@ -303,59 +287,7 @@ func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 	return plcMap
 }
 
-func checkRoleBindingViolations(roleBindingList *v1.RoleBindingList, plc *policiesv1.IamPolicy, namespace string) (roleBindingV int, violatedRoleBindings []string) {
 
-	roleBindingsMap := make(map[string]bool)
-	for _, roleBinding := range roleBindingList.Items {
-		for _, subject := range roleBinding.Subjects {
-			if subject.Kind == "Group" && subject.Name != roleBinding.Name && strings.HasPrefix(roleBinding.Name, "icp:") {
-				roleBindingsMap[roleBinding.Name] = true
-				fmt.Println("violated roleBinding:", roleBinding.Name)
-				violatedRoleBindings = append(violatedRoleBindings, roleBinding.Name)
-			}
-		}
-		if !strings.HasPrefix(roleBinding.RoleRef.Name, "icp:") && strings.HasPrefix(roleBinding.Name, "icp:") {
-			roleBindingsMap[roleBinding.Name] = true
-			violatedRoleBindings = append(violatedRoleBindings, roleBinding.Name)
-		}
-	}
-	var rBindingViolationCount int
-	if plc.Spec.MaxRoleBindingViolationsPerNamespace < len(roleBindingsMap) && plc.Spec.MaxRoleBindingViolationsPerNamespace >= 0 {
-		rBindingViolationCount = (len(roleBindingsMap) - plc.Spec.MaxRoleBindingViolationsPerNamespace)
-	}
-	return rBindingViolationCount, violatedRoleBindings
-}
-
-func addRoleBindingsViolationCount(plc *policiesv1.IamPolicy, roleBindingCount int, vRoleBindings []string, namespace string) bool {
-
-	changed := false
-	msg := fmt.Sprintf("%s rolebindings violations detected in namespace `%s`, violated rolebinding : %v", fmt.Sprint(roleBindingCount), namespace, vRoleBindings)
-
-	if plc.Status.CompliancyDetails == nil {
-		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
-	}
-	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
-		plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)
-
-	}
-	if plc.Status.CompliancyDetails[plc.Name][namespace] == nil {
-		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{}
-	}
-	if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
-		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
-		changed = true
-		return changed
-	}
-	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-	if len(firstNum) > 0 {
-		if firstNum[0] == fmt.Sprint(roleBindingCount) {
-			return false
-		}
-		plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
-		changed = true
-	}
-	return changed
-}
 
 func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace string) bool {
 
@@ -415,40 +347,6 @@ func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy) {
 	}
 }
 
-func checkComplianceChangeBasedOnDetails(plc *policiesv1.IamPolicy) (complianceChanged bool) {
-	//used in case we also want to know not just the compliance state, but also whether the compliance changed or not.
-	previous := plc.Status.ComplianceState
-	if plc.Status.CompliancyDetails == nil {
-		plc.Status.ComplianceState = policiesv1.UnknownCompliancy
-		return reflect.DeepEqual(previous, plc.Status.ComplianceState)
-	}
-	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
-		plc.Status.ComplianceState = policiesv1.UnknownCompliancy
-		return reflect.DeepEqual(previous, plc.Status.ComplianceState)
-	}
-	if len(plc.Status.CompliancyDetails[plc.Name]) == 0 {
-		plc.Status.ComplianceState = policiesv1.UnknownCompliancy
-		return reflect.DeepEqual(previous, plc.Status.ComplianceState)
-	}
-	plc.Status.ComplianceState = policiesv1.Compliant
-	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
-		if len(msgList) > 0 {
-			violationNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-			if len(violationNum) > 0 {
-				if violationNum[0] != fmt.Sprint(0) {
-					plc.Status.ComplianceState = policiesv1.NonCompliant
-				}
-			}
-		} else {
-			return reflect.DeepEqual(previous, plc.Status.ComplianceState)
-		}
-	}
-	if plc.Status.ComplianceState != policiesv1.NonCompliant {
-		plc.Status.ComplianceState = policiesv1.Compliant
-	}
-	return reflect.DeepEqual(previous, plc.Status.ComplianceState)
-}
-
 func updatePolicyStatus(policies map[string]*policiesv1.IamPolicy) (*policiesv1.IamPolicy, error) {
 	for _, instance := range policies { // policies is a map where: key = plc.Name, value = pointer to plc
 		err := reconcilingAgent.client.Status().Update(context.TODO(), instance)
@@ -459,10 +357,12 @@ func updatePolicyStatus(policies map[string]*policiesv1.IamPolicy) (*policiesv1.
 			createParentPolicyEvent(instance)
 		}
 		{ //TODO we can make this eventing enabled by a flag
-			if instance.Status.ComplianceState == policiesv1.NonCompliant {
-				reconcilingAgent.recorder.Event(instance, corev1.EventTypeWarning, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
-			} else {
-				reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+			if reconcilingAgent.recorder != nil {
+				if instance.Status.ComplianceState == policiesv1.NonCompliant {
+					reconcilingAgent.recorder.Event(instance, corev1.EventTypeWarning, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+				} else {
+					reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+				}
 			}
 		}
 	}
@@ -508,29 +408,6 @@ func handleAddingPolicy(plc *policiesv1.IamPolicy) error {
 		availablePolicies.AddObject(ns, plc)
 	}
 	return err
-}
-
-//=================================================================
-// Helper functions to check if a string exists in a slice of strings.
-func containsString(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-//=================================================================
-// Helper functions to remove a string from a slice of strings.
-func removeString(slice []string, s string) (result []string) {
-	for _, item := range slice {
-		if item == s {
-			continue
-		}
-		result = append(result, item)
-	}
-	return
 }
 
 //=================================================================

@@ -396,7 +396,7 @@ func printMap(myMap map[string]*policiesv1.IamPolicy) {
 		return
 	}
 	fmt.Println("Available iam policies: ")
-	for k, v := range myMap {
+	for _, v := range myMap {
 		fmt.Printf("policy = %v \n", v.Name)
 	}
 }

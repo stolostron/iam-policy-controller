@@ -176,11 +176,7 @@ func (r *ReconcileIamPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		instance.Status.CompliancyDetails = nil //reset CompliancyDetails
 
 		reqLogger.Info("Iam policy was found, adding it...")
-		err = handleAddingPolicy(instance)
-		if err != nil {
-			reqLogger.Info("Failed to handleAddingPolicy", "err", err)
-			return reconcile.Result{}, err
-		}
+		handleAddingPolicy(instance)
 
 	}
 	reqLogger.Info("Reconcile complete.")
@@ -386,11 +382,10 @@ func handleRemovingPolicy(name string) {
 	}
 }
 
-func handleAddingPolicy(plc *policiesv1.IamPolicy) error {
+func handleAddingPolicy(plc *policiesv1.IamPolicy) {
 
 	// Since this policy isn't namespace based it will ignore namespace selection so the cluster is always checked
 	availablePolicies.AddObject("cluster", plc)
-	return err
 }
 
 //=================================================================

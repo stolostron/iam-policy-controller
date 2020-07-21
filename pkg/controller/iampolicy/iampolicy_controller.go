@@ -388,25 +388,8 @@ func handleRemovingPolicy(name string) {
 
 func handleAddingPolicy(plc *policiesv1.IamPolicy) error {
 
-	allNamespaces, err := common.GetAllNamespaces()
-	if err != nil {
-
-		glog.Errorf("reason: error fetching the list of available namespaces, subject: K8s API server, namespace: all, according to policy: %v, additional-info: %v\n", plc.Name, err)
-
-		return err
-	}
-	//clean up that policy from the existing namepsaces, in case the modification is in the namespace selector
-	for _, ns := range allNamespaces {
-		if policy, found := availablePolicies.GetObject(ns); found {
-			if policy.Name == plc.Name {
-				availablePolicies.RemoveObject(ns)
-			}
-		}
-	}
-	selectedNamespaces := common.GetSelectedNamespaces(plc.Spec.NamespaceSelector.Include, plc.Spec.NamespaceSelector.Exclude, allNamespaces)
-	for _, ns := range selectedNamespaces {
-		availablePolicies.AddObject(ns, plc)
-	}
+	// Since this policy isn't namespace based it will ignore namespace selection so the cluster is always checked
+	availablePolicies.AddObject("cluster", plc)
 	return err
 }
 

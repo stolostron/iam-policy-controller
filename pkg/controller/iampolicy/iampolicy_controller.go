@@ -395,9 +395,9 @@ func printMap(myMap map[string]*policiesv1.IamPolicy) {
 		fmt.Println("Waiting for iam policies to be available for processing... ")
 		return
 	}
-	fmt.Println("Available iam policies in namespaces: ")
+	fmt.Println("Available iam policies: ")
 	for k, v := range myMap {
-		fmt.Printf("namespace = %v; policy = %v \n", k, v.Name)
+		fmt.Printf("policy = %v \n", v.Name)
 	}
 }
 

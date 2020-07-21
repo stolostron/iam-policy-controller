@@ -176,11 +176,7 @@ func (r *ReconcileIamPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 		instance.Status.CompliancyDetails = nil //reset CompliancyDetails
 
 		reqLogger.Info("Iam policy was found, adding it...")
-		err = handleAddingPolicy(instance)
-		if err != nil {
-			reqLogger.Info("Failed to handleAddingPolicy", "err", err)
-			return reconcile.Result{}, err
-		}
+		handleAddingPolicy(instance)
 
 	}
 	reqLogger.Info("Reconcile complete.")
@@ -386,28 +382,10 @@ func handleRemovingPolicy(name string) {
 	}
 }
 
-func handleAddingPolicy(plc *policiesv1.IamPolicy) error {
+func handleAddingPolicy(plc *policiesv1.IamPolicy) {
 
-	allNamespaces, err := common.GetAllNamespaces()
-	if err != nil {
-
-		glog.Errorf("reason: error fetching the list of available namespaces, subject: K8s API server, namespace: all, according to policy: %v, additional-info: %v\n", plc.Name, err)
-
-		return err
-	}
-	//clean up that policy from the existing namepsaces, in case the modification is in the namespace selector
-	for _, ns := range allNamespaces {
-		if policy, found := availablePolicies.GetObject(ns); found {
-			if policy.Name == plc.Name {
-				availablePolicies.RemoveObject(ns)
-			}
-		}
-	}
-	selectedNamespaces := common.GetSelectedNamespaces(plc.Spec.NamespaceSelector.Include, plc.Spec.NamespaceSelector.Exclude, allNamespaces)
-	for _, ns := range selectedNamespaces {
-		availablePolicies.AddObject(ns, plc)
-	}
-	return err
+	// Since this policy isn't namespace based it will ignore namespace selection so the cluster is always checked
+	availablePolicies.AddObject("cluster", plc)
 }
 
 //=================================================================
@@ -417,9 +395,9 @@ func printMap(myMap map[string]*policiesv1.IamPolicy) {
 		fmt.Println("Waiting for iam policies to be available for processing... ")
 		return
 	}
-	fmt.Println("Available iam policies in namespaces: ")
-	for k, v := range myMap {
-		fmt.Printf("namespace = %v; policy = %v \n", k, v.Name)
+	fmt.Println("Available iam policies: ")
+	for _, v := range myMap {
+		fmt.Printf("policy = %v \n", v.Name)
 	}
 }
 

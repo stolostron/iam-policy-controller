@@ -45,7 +45,7 @@ jobs:
         - if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then export COMPONENT_TAG_EXTENSION="-PR${TRAVIS_PULL_REQUEST}-${TRAVIS_COMMIT}"; fi;
         - make component/build
         - make component/push
-        - if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+        - if [ "$TRAVIS_PULL_REQUEST" == "false" -a "$TRAVIS_BRANCH" == "master" ]; then
             export COMPONENT_NEWTAG="latest-dev";
             make component/tag;
             export COMPONENT_VERSION="latest";

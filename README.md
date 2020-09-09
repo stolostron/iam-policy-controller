@@ -30,3 +30,6 @@ spec:
   # Maximum number of cluster role binding still valid before it is considered as non-compliant
   maxClusterRoleBindingUsers: 5
 ```
+<!---
+Date: 9/09/2020
+-->

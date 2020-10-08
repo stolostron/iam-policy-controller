@@ -290,6 +290,8 @@ func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace string) bool {
 
 	changed := false
+	// DO NOT change the message below without also considering that it is parsed to obtain
+	// the count from the previous status!
 	msg := fmt.Sprintf("Number of users with clusteradmin role is %s above the specified limit", fmt.Sprint(userCount))
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
@@ -308,8 +310,9 @@ func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace strin
 	}
 	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
 	if len(firstNum) >= 7 {
+		glog.Errorf("DEBUG: Comparing %s to %d", firstNum[7], userCount)
 		if firstNum[7] == fmt.Sprint(userCount) {
-			return false
+			return changed
 		}
 	}
 	plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg

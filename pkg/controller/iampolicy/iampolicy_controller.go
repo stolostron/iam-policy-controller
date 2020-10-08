@@ -211,15 +211,17 @@ func PeriodicallyExecIamPolicies(freq uint) {
 		plcToUpdateMap = make(map[string]*policiesv1.IamPolicy)
 
 		//currently no support for perNamespace rolebindings
-		err := checkUnNamespacedPolicies(plcToUpdateMap)
+		update, err := checkUnNamespacedPolicies(plcToUpdateMap)
 		if err != nil {
 			glog.Errorf("Error checking un-namespaced policies, additional info %v \n",err)
 		}
 
-		//update status of all policies that changed:
-		faultyPlc, err := updatePolicyStatus(plcToUpdateMap)
-		if err != nil {
-			glog.Errorf("reason: policy update error, subject: policy/%v, namespace: %v, according to policy: %v, additional-info: %v\n", faultyPlc.Name, faultyPlc.Namespace, faultyPlc.Name, err)
+		if update {
+			//update status of all policies that changed:
+			faultyPlc, err := updatePolicyStatus(plcToUpdateMap)
+			if err != nil {
+				glog.Errorf("reason: policy update error, subject: policy/%v, namespace: %v, according to policy: %v, additional-info: %v\n", faultyPlc.Name, faultyPlc.Namespace, faultyPlc.Name, err)
+			}
 		}
 
 		//check if continue
@@ -236,7 +238,7 @@ func PeriodicallyExecIamPolicies(freq uint) {
 	}
 }
 
-func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) error {
+func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) bool, error {
 	plcMap := convertMaptoPolicyNameKey()
 
 	// group the policies with cluster users and the ones with groups
@@ -245,9 +247,10 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 	ClusteRoleBindingList, err := (*common.KubeClient).RbacV1().ClusterRoleBindings().List(metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("reason: communication error, subject: k8s API server, namespace: all, according to policy: none, additional-info: %v\n", err)
-		return err
+		return false, err
 	}
 
+	update := false
 	clusterLevelUsers := checkAllClusterLevel(ClusteRoleBindingList)
 	for _, policy := range plcMap {
 		var userViolationCount int
@@ -256,10 +259,11 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 		}
 		if addViolationCount(policy, userViolationCount, "cluster-wide") {
 			plcToUpdateMap[policy.Name] = policy
+			update = true
 		}
 		checkComplianceBasedOnDetails(policy)
 	}
-	return nil
+	return update, nil
 }
 
 func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (userV int) {

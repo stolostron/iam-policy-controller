@@ -303,7 +303,6 @@ func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace strin
 	}
 	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
 	if len(firstNum) >= 7 {
-		glog.Errorf("DEBUG: Comparing %s to %d", firstNum[7], userCount)
 		if firstNum[7] == fmt.Sprint(userCount) {
 			return changed
 		}

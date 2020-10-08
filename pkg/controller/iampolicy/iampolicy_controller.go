@@ -307,8 +307,8 @@ func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace strin
 		return changed
 	}
 	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-	if len(firstNum) > 0 {
-		if firstNum[0] == fmt.Sprint(userCount) {
+	if len(firstNum) >= 7 {
+		if firstNum[7] == fmt.Sprint(userCount) {
 			return false
 		}
 	}
@@ -331,11 +331,8 @@ func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy) {
 	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
 		if len(msgList) > 0 {
 			violationNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-			if len(violationNum) > 0 {
+			if len(violationNum) >= 7 {
 				if violationNum[7] != fmt.Sprint(0) && strings.HasPrefix(violationNum[0], "Number") {
-					plc.Status.ComplianceState = policiesv1.NonCompliant
-				}
-				if violationNum[0] != fmt.Sprint(0) && strings.HasPrefix(violationNum[1], "rolebindings") {
 					plc.Status.ComplianceState = policiesv1.NonCompliant
 				}
 			}

@@ -104,15 +104,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	err = c.Watch(&source.Kind{Type: &policiesv1.IamPolicy{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &policiesv1.IamPolicy{},
-	})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

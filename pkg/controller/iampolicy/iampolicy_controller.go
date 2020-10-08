@@ -15,6 +15,7 @@ import (
 	"github.com/golang/glog"
 	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/policy/v1"
 	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
+	"github.com/operator-framework/operator-sdk/pkg/predicate"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -99,7 +100,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource IamPolicy
-	err = c.Watch(&source.Kind{Type: &policiesv1.IamPolicy{}}, &handler.EnqueueRequestForObject{})
+	pred := predicate.GenerationChangedPredicate{}
+	err = c.Watch(&source.Kind{Type: &policiesv1.IamPolicy{}}, &handler.EnqueueRequestForObject{}, pred)
 	if err != nil {
 		return err
 	}

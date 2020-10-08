@@ -213,7 +213,7 @@ func PeriodicallyExecIamPolicies(freq uint) {
 		//currently no support for perNamespace rolebindings
 		update, err := checkUnNamespacedPolicies(plcToUpdateMap)
 		if err != nil {
-			glog.Errorf("Error checking un-namespaced policies, additional info %v \n",err)
+			glog.Errorf("Error checking un-namespaced policies, additional info %v \n", err)
 		}
 
 		if update {
@@ -225,7 +225,7 @@ func PeriodicallyExecIamPolicies(freq uint) {
 		}
 
 		//check if continue
-		if(exitExecLoop == "true"){
+		if exitExecLoop == "true" {
 			return
 		}
 		//making sure that if processing is > freq we don't sleep
@@ -238,7 +238,7 @@ func PeriodicallyExecIamPolicies(freq uint) {
 	}
 }
 
-func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) bool, error {
+func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) (bool, error) {
 	plcMap := convertMaptoPolicyNameKey()
 
 	// group the policies with cluster users and the ones with groups
@@ -286,8 +286,6 @@ func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 	}
 	return plcMap
 }
-
-
 
 func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace string) bool {
 

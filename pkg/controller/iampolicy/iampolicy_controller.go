@@ -15,6 +15,7 @@ import (
 	"github.com/golang/glog"
 	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/policy/v1"
 	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
+	"github.com/operator-framework/operator-sdk/pkg/predicate"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -99,16 +100,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource IamPolicy
-	err = c.Watch(&source.Kind{Type: &policiesv1.IamPolicy{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
-
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	err = c.Watch(&source.Kind{Type: &policiesv1.IamPolicy{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &policiesv1.IamPolicy{},
-	})
+	pred := predicate.GenerationChangedPredicate{}
+	err = c.Watch(&source.Kind{Type: &policiesv1.IamPolicy{}}, &handler.EnqueueRequestForObject{}, pred)
 	if err != nil {
 		return err
 	}
@@ -211,19 +204,21 @@ func PeriodicallyExecIamPolicies(freq uint) {
 		plcToUpdateMap = make(map[string]*policiesv1.IamPolicy)
 
 		//currently no support for perNamespace rolebindings
-		err := checkUnNamespacedPolicies(plcToUpdateMap)
+		update, err := checkUnNamespacedPolicies(plcToUpdateMap)
 		if err != nil {
-			glog.Errorf("Error checking un-namespaced policies, additional info %v \n",err)
+			glog.Errorf("Error checking un-namespaced policies, additional info %v \n", err)
 		}
 
-		//update status of all policies that changed:
-		faultyPlc, err := updatePolicyStatus(plcToUpdateMap)
-		if err != nil {
-			glog.Errorf("reason: policy update error, subject: policy/%v, namespace: %v, according to policy: %v, additional-info: %v\n", faultyPlc.Name, faultyPlc.Namespace, faultyPlc.Name, err)
+		if update {
+			//update status of all policies that changed:
+			faultyPlc, err := updatePolicyStatus(plcToUpdateMap)
+			if err != nil {
+				glog.Errorf("reason: policy update error, subject: policy/%v, namespace: %v, according to policy: %v, additional-info: %v\n", faultyPlc.Name, faultyPlc.Namespace, faultyPlc.Name, err)
+			}
 		}
 
 		//check if continue
-		if(exitExecLoop == "true"){
+		if exitExecLoop == "true" {
 			return
 		}
 		//making sure that if processing is > freq we don't sleep
@@ -236,7 +231,7 @@ func PeriodicallyExecIamPolicies(freq uint) {
 	}
 }
 
-func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) error {
+func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) (bool, error) {
 	plcMap := convertMaptoPolicyNameKey()
 
 	// group the policies with cluster users and the ones with groups
@@ -245,9 +240,10 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 	ClusteRoleBindingList, err := (*common.KubeClient).RbacV1().ClusterRoleBindings().List(metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("reason: communication error, subject: k8s API server, namespace: all, according to policy: none, additional-info: %v\n", err)
-		return err
+		return false, err
 	}
 
+	update := false
 	clusterLevelUsers := checkAllClusterLevel(ClusteRoleBindingList)
 	for _, policy := range plcMap {
 		var userViolationCount int
@@ -256,10 +252,11 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 		}
 		if addViolationCount(policy, userViolationCount, "cluster-wide") {
 			plcToUpdateMap[policy.Name] = policy
+			update = true
 		}
 		checkComplianceBasedOnDetails(policy)
 	}
-	return nil
+	return update, nil
 }
 
 func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (userV int) {
@@ -283,11 +280,11 @@ func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 	return plcMap
 }
 
-
-
 func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace string) bool {
 
 	changed := false
+	// DO NOT change the message below without also considering that it is parsed to obtain
+	// the count from the previous status!
 	msg := fmt.Sprintf("Number of users with clusteradmin role is %s above the specified limit", fmt.Sprint(userCount))
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
@@ -305,9 +302,9 @@ func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace strin
 		return changed
 	}
 	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-	if len(firstNum) > 0 {
-		if firstNum[0] == fmt.Sprint(userCount) {
-			return false
+	if len(firstNum) >= 7 {
+		if firstNum[7] == fmt.Sprint(userCount) {
+			return changed
 		}
 	}
 	plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
@@ -329,11 +326,8 @@ func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy) {
 	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
 		if len(msgList) > 0 {
 			violationNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-			if len(violationNum) > 0 {
+			if len(violationNum) >= 7 {
 				if violationNum[7] != fmt.Sprint(0) && strings.HasPrefix(violationNum[0], "Number") {
-					plc.Status.ComplianceState = policiesv1.NonCompliant
-				}
-				if violationNum[0] != fmt.Sprint(0) && strings.HasPrefix(violationNum[1], "rolebindings") {
 					plc.Status.ComplianceState = policiesv1.NonCompliant
 				}
 			}

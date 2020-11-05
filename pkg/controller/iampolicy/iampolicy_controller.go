@@ -58,11 +58,14 @@ var NamespaceWatched string
 // EventOnParent specifies if we also want to send events to the parent policy. Available options are yes/no/ifpresent
 var EventOnParent string
 
+var formatString string = "policy: %s/%s"
+
 // A way to allow exiting out of the periodic policy check loop
 var exitExecLoop string
 
 // Initialize to initialize some controller varaibles
-func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, namespace, eventParent string) (err error) {
+func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, namespace,
+	eventParent string) (err error) {
 	KubeClient = kClient
 	PlcChan = make(chan *policiesv1.IamPolicy, 100) //buffering up to 100 policies for update
 
@@ -213,7 +216,8 @@ func PeriodicallyExecIamPolicies(freq uint) {
 			//update status of all policies that changed:
 			faultyPlc, err := updatePolicyStatus(plcToUpdateMap)
 			if err != nil {
-				glog.Errorf("reason: policy update error, subject: policy/%v, namespace: %v, according to policy: %v, additional-info: %v\n", faultyPlc.Name, faultyPlc.Namespace, faultyPlc.Name, err)
+				glog.Errorf("reason: policy update error, subject: policy/%v, namespace: %v, according to "+
+					"policy: %v, additional-info: %v\n", faultyPlc.Name, faultyPlc.Namespace, faultyPlc.Name, err)
 			}
 		}
 
@@ -239,7 +243,8 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 
 	ClusteRoleBindingList, err := (*common.KubeClient).RbacV1().ClusterRoleBindings().List(metav1.ListOptions{})
 	if err != nil {
-		glog.Errorf("reason: communication error, subject: k8s API server, namespace: all, according to policy: none, additional-info: %v\n", err)
+		glog.Errorf("reason: communication error, subject: k8s API server, namespace: all, "+
+			"according to policy: none, additional-info: %v\n", err)
 		return false, err
 	}
 
@@ -346,12 +351,16 @@ func updatePolicyStatus(policies map[string]*policiesv1.IamPolicy) (*policiesv1.
 		if EventOnParent != "no" {
 			createParentPolicyEvent(instance)
 		}
-		{ //TODO we can make this eventing enabled by a flag
+		{ // Can we make this eventing enabled by a flag
 			if reconcilingAgent.recorder != nil {
 				if instance.Status.ComplianceState == policiesv1.NonCompliant {
-					reconcilingAgent.recorder.Event(instance, corev1.EventTypeWarning, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+					reconcilingAgent.recorder.Event(instance, corev1.EventTypeWarning,
+						fmt.Sprintf(formatString, instance.Namespace, instance.Name),
+						convertPolicyStatusToString(instance))
 				} else {
-					reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+					reconcilingAgent.recorder.Event(instance, corev1.EventTypeNormal,
+						fmt.Sprintf(formatString, instance.Namespace, instance.Name),
+						convertPolicyStatusToString(instance))
 				}
 			}
 		}
@@ -407,9 +416,11 @@ func createParentPolicyEvent(instance *policiesv1.IamPolicy) {
 	parentPlc := createParentPolicy(instance)
 
 	if instance.Status.ComplianceState == policiesv1.NonCompliant {
-		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeWarning, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeWarning,
+			fmt.Sprintf(formatString, instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 	} else {
-		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal, fmt.Sprintf("policy: %s/%s", instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
+		reconcilingAgent.recorder.Event(&parentPlc, corev1.EventTypeNormal,
+			fmt.Sprintf(formatString, instance.Namespace, instance.Name), convertPolicyStatusToString(instance))
 	}
 }
 

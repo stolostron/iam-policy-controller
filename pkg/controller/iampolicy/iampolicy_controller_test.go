@@ -29,6 +29,11 @@ import (
 var mgr manager.Manager
 var err error
 
+func TestInitialize(t *testing.T) {
+	result := Initialize(nil, nil, "test", "test", "test")
+	assert.Nil(t, result)
+}
+
 func TestReconcile(t *testing.T) {
 	var (
 		name      = "foo"
@@ -40,7 +45,7 @@ func TestReconcile(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: policiesv1.IamPolicySpec{
-			MaxClusterRoleBindingUsers:   1,
+			MaxClusterRoleBindingUsers: 1,
 		},
 	}
 
@@ -101,7 +106,7 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: policiesv1.IamPolicySpec{
-			MaxClusterRoleBindingUsers:  1,
+			MaxClusterRoleBindingUsers: 1,
 		},
 	}
 
@@ -126,9 +131,8 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 	t.Log(res)
 	var target = []string{"default"}
 	iamPolicy.Spec.NamespaceSelector.Include = target
-	err = handleAddingPolicy(&iamPolicy)
-	assert.Nil(t, err)
-	exitExecLoop="true"
+	handleAddingPolicy(&iamPolicy)
+	exitExecLoop = "true"
 	PeriodicallyExecIamPolicies(1)
 }
 
@@ -144,7 +148,7 @@ func TestCheckUnNamespacedPolicies(t *testing.T) {
 	var policies = map[string]*policiesv1.IamPolicy{}
 	policies["policy1"] = &iamPolicy
 
-	err := checkUnNamespacedPolicies(policies)
+	_, err := checkUnNamespacedPolicies(policies)
 	assert.Nil(t, err)
 }
 
@@ -192,6 +196,12 @@ func TestCheckAllClusterLevel(t *testing.T) {
 	assert.Equal(t, 1, users)
 }
 
+func TestPrintMap(t *testing.T) {
+	var policies = map[string]*policiesv1.IamPolicy{}
+	policies["policy1"] = &iamPolicy
+	printMap(policies)
+}
+
 func TestCreateParentPolicy(t *testing.T) {
 	var ownerReference = metav1.OwnerReference{
 		Name: "foo",
@@ -203,28 +213,6 @@ func TestCreateParentPolicy(t *testing.T) {
 	policy := createParentPolicy(&iamPolicy)
 	assert.NotNil(t, policy)
 	createParentPolicyEvent(&iamPolicy)
-}
-
-func TestConvertPolicyStatusToString(t *testing.T) {
-	var compliantDetail = map[string][]string{}
-	var compliantDetails = map[string]map[string][]string{}
-	details := []string{}
-
-	details = append(details, "detail1", "detail2")
-
-	compliantDetail["w"] = details
-	compliantDetails["a"] = compliantDetail
-	compliantDetails["b"] = compliantDetail
-	compliantDetails["c"] = compliantDetail
-	iamPolicyStatus := policiesv1.IamPolicyStatus{
-		ComplianceState:   "Compliant",
-		CompliancyDetails: compliantDetails,
-	}
-	iamPolicy.Status = iamPolicyStatus
-	var policyInString = convertPolicyStatusToString(&iamPolicy)
-	assert.NotNil(t, policyInString)
-	checkComplianceBasedOnDetails(&iamPolicy)
-	addViolationCount(&iamPolicy, 1, "default")
 }
 
 func TestHandleAddingPolicy(t *testing.T) {
@@ -241,9 +229,10 @@ func TestHandleAddingPolicy(t *testing.T) {
 	}
 	simpleClient.CoreV1().Namespaces().Create(&ns)
 	common.Initialize(&simpleClient, nil)
-	err := handleAddingPolicy(&iamPolicy)
-	assert.Nil(t, err)
+	handleAddingPolicy(&iamPolicy)
+	assert.NotNil(t, availablePolicies.PolicyMap["cluster"])
 	handleRemovingPolicy("foo")
+	assert.Nil(t, availablePolicies.PolicyMap["cluster"])
 }
 
 func TestGetContainerID(t *testing.T) {

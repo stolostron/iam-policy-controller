@@ -31,7 +31,7 @@ var err error
 
 func TestInitialize(t *testing.T) {
 	result := Initialize(nil, nil, "test", "test", "test")
-	assert.Nil(t, result == nil)
+	assert.Nil(t, result)
 }
 
 func TestReconcile(t *testing.T) {
@@ -231,7 +231,7 @@ func TestHandleAddingPolicy(t *testing.T) {
 	common.Initialize(&simpleClient, nil)
 	handleAddingPolicy(&iamPolicy)
 	assert.NotNil(t, availablePolicies.PolicyMap["cluster"])
-	handleRemovingPolicy("cluster")
+	handleRemovingPolicy("foo")
 	assert.Nil(t, availablePolicies.PolicyMap["cluster"])
 }
 

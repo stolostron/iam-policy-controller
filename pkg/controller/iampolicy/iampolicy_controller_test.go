@@ -77,31 +77,6 @@ func TestReconcile(t *testing.T) {
 	t.Log(res)
 }
 
-func TestEnsureDefaultLabel(t *testing.T) {
-
-	instance := &policiesv1.IamPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "default",
-		},
-		Spec: policiesv1.IamPolicySpec{
-			MaxClusterRoleBindingUsers: 1,
-		},
-	}
-	result := ensureDefaultLabel(instance)
-	assert.True(t, result)
-
-	instance.ObjectMeta.Labels = make(map[string]string)
-	result = ensureDefaultLabel(instance)
-	assert.True(t, result)
-
-	instance.ObjectMeta.Labels["category"] = "fred"
-	result = ensureDefaultLabel(instance)
-	assert.True(t, result)
-
-	result = ensureDefaultLabel(instance)
-	assert.False(t, result)
-}
 func TestPeriodicallyExecIamPolicies(t *testing.T) {
 	var (
 		name      = "foo"
@@ -156,8 +131,7 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 	t.Log(res)
 	var target = []string{"default"}
 	iamPolicy.Spec.NamespaceSelector.Include = target
-	err = handleAddingPolicy(&iamPolicy)
-	assert.Nil(t, err)
+	handleAddingPolicy(&iamPolicy)
 	exitExecLoop = "true"
 	PeriodicallyExecIamPolicies(1)
 }
@@ -174,7 +148,7 @@ func TestCheckUnNamespacedPolicies(t *testing.T) {
 	var policies = map[string]*policiesv1.IamPolicy{}
 	policies["policy1"] = &iamPolicy
 
-	err := checkUnNamespacedPolicies(policies)
+	_, err := checkUnNamespacedPolicies(policies)
 	assert.Nil(t, err)
 }
 

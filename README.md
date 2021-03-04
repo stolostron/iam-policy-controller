@@ -1,10 +1,12 @@
+[comment]: # ( Copyright Contributors to the Open Cluster Management project )
+
 # IAM Policy Controller
 
 ## Description
-IAM policy controller watches cluster administrator role and IAM role binding created and used within ICP/MCM. It detects the cluster administrator role and IAM role binding violations and report it. The controller shows whether or not a given `IamPolicy` is compliant or noncompliant.
+IAM policy controller watches cluster administrator role and IAM role binding created and used within a Kubernetes cluster. It detects the cluster administrator role and IAM role binding violations and report it. The controller shows whether or not a given `IamPolicy` is compliant or noncompliant.
 
 ## Usage
-The controller can be run as a stand-alone program within IBM Cloud Private. Its intended usage is to be integrated with Multi-cloud Manager.
+The controller can be run as a stand-alone program or as an integrated part of governing risk with Red Hat Advanced Cluster Management for Kubernetes.
 
 `IamPolicy` is kind for the custom resource definition created by this controller. It watches the namespaces included in namespace selector and shows whether those namespaces and the policy as a whole is compliant or not.
 

@@ -154,7 +154,7 @@ func (r *ReconcileIamPolicy) Reconcile(request reconcile.Request) (reconcile.Res
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			handleRemovingPolicy(request.NamespacedName.Name)
+			handleRemovingPolicy(request.NamespacedName.Name, request.NamespacedName.Namespace)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -282,7 +282,7 @@ func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (us
 func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 	plcMap := make(map[string]*policiesv1.IamPolicy)
 	for _, policy := range availablePolicies.PolicyMap {
-		plcMap[policy.Name] = policy
+		plcMap[fmt.Sprint("%s.%s", policy.Namespace, policy.Name)] = policy
 	}
 	return plcMap
 }
@@ -379,9 +379,9 @@ func getContainerID(pod corev1.Pod, containerName string) string {
 	return ""
 }
 
-func handleRemovingPolicy(name string) {
+func handleRemovingPolicy(name string, namespace string) {
 	for k, v := range availablePolicies.PolicyMap {
-		if v.Name == name {
+		if v.Name == name && v.Namespace == namespace {
 			availablePolicies.RemoveObject(k)
 		}
 	}
@@ -390,7 +390,7 @@ func handleRemovingPolicy(name string) {
 func handleAddingPolicy(plc *policiesv1.IamPolicy) {
 
 	// Since this policy isn't namespace based it will ignore namespace selection so the cluster is always checked
-	availablePolicies.AddObject("cluster", plc)
+	availablePolicies.AddObject(fmt.Sprintf("%s.%s", plc.Namespace, plc.Name), plc)
 }
 
 //=================================================================

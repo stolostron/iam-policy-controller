@@ -1,6 +1,6 @@
 [comment]: # ( Copyright Contributors to the Open Cluster Management project )
 
-# IAM Policy Controller
+# IAM Policy Controller [![KinD tests](https://github.com/open-cluster-management/iam-policy-controller/actions/workflows/kind.yml/badge.svg?branch=main&event=push)](https://github.com/open-cluster-management/iam-policy-controller/actions/workflows/kind.yml)
 
 ## Description
 IAM policy controller watches cluster administrator role and IAM role binding created and used within a Kubernetes cluster. It detects the cluster administrator role and IAM role binding violations and report it. The controller shows whether or not a given `IamPolicy` is compliant or noncompliant.

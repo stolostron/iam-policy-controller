@@ -282,7 +282,7 @@ func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (us
 func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 	plcMap := make(map[string]*policiesv1.IamPolicy)
 	for _, policy := range availablePolicies.PolicyMap {
-		plcMap[fmt.Sprint("%s.%s", policy.Namespace, policy.Name)] = policy
+		plcMap[fmt.Sprintf("%s.%s", policy.Namespace, policy.Name)] = policy
 	}
 	return plcMap
 }

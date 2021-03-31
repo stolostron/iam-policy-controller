@@ -232,9 +232,13 @@ func TestHandleAddingPolicy(t *testing.T) {
 	simpleClient.CoreV1().Namespaces().Create(&ns)
 	common.Initialize(&simpleClient, nil)
 	handleAddingPolicy(&iamPolicy)
-	assert.NotNil(t, availablePolicies.PolicyMap["cluster"])
-	handleRemovingPolicy("foo")
-	assert.Nil(t, availablePolicies.PolicyMap["cluster"])
+	policy, found := availablePolicies.GetObject(iamPolicy.Namespace + "." + iamPolicy.Name)
+	assert.True(t, found)
+	assert.NotNil(t, policy)
+	handleRemovingPolicy("foo", "default")
+	policy, found = availablePolicies.GetObject(iamPolicy.Namespace + "." + iamPolicy.Name)
+	assert.False(t, found)
+	assert.Nil(t, policy)
 }
 
 func TestGetContainerID(t *testing.T) {

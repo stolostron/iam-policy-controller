@@ -6,7 +6,6 @@
 // Copyright (c) 2020 Red Hat, Inc.
 // Copyright Contributors to the Open Cluster Management project
 
-
 // NOTE: Boilerplate only.  Ignore this file.
 
 // Package v1 contains API Schema definitions for the policy v1 API group

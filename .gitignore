@@ -1,14 +1,13 @@
 .build-harness-bootstrap
 build-harness
 build-harness-extensions
+build/_output
+kubeconfig_managed
 
 # override build harness vendoring
 !vbh/.build-harness-vendorized
 !vbh/build-harness
 !vbh/build-harness-extensions
 .vscode/launch.json
-iam-policy_amd64
 cover.out
 coverage.out
-coverage.out
-iam-policy

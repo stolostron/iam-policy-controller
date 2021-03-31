@@ -9,6 +9,32 @@
 # Git vars
 GITHUB_USER ?=
 GITHUB_TOKEN ?=
+# Only use git commands if it exists
+ifdef GIT
+GIT_COMMIT      = $(shell git rev-parse --short HEAD)
+GIT_REMOTE_URL  = $(shell git config --get remote.origin.url)
+endif
+
+# Go build settings
+GOARCH = $(shell go env GOARCH)
+GOOS = $(shell go env GOOS)
+
+# Handle KinD configuration
+KIND_NAME ?= test-managed
+KIND_NAMESPACE ?= multicluster-endpoint
+KIND_VERSION ?= latest
+ifneq ($(KIND_VERSION), latest)
+	KIND_ARGS = --image kindest/node:$(KIND_VERSION)
+else
+	KIND_ARGS =
+endif
+
+# Image URL to use all building/pushing image targets;
+# Use your own docker registry and image name for dev/test by overridding the IMG and REGISTRY environment variable.
+IMG ?= $(shell cat COMPONENT_NAME 2> /dev/null)
+REGISTRY ?= quay.io/open-cluster-management
+TAG ?= latest
+IMAGE_NAME_AND_VERSION ?= $(REGISTRY)/$(IMG)
 
 # CICD BUILD HARNESS
 ####################
@@ -17,7 +43,7 @@ GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
 USE_VENDORIZED_BUILD_HARNESS ?=
 
 ifndef USE_VENDORIZED_BUILD_HARNESS
--include $(shell curl -s -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
+-include $(shell curl -s -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
 else
 -include vbh/.build-harness-vendorized
 endif
@@ -25,22 +51,6 @@ endif
 .PHONY: default
 default::
 	@echo "Build Harness Bootstrapped"
-
-
-# Go build settings
-ARCH = $(shell uname -m)
-ifeq ($(ARCH), x86_64)
-    ARCH = amd64
-endif
-
-GOARCH = $(shell go env GOARCH)
-GOOS = $(shell go env GOOS)
-
-# Only use git commands if it exists
-ifdef GIT
-GIT_COMMIT      = $(shell git rev-parse --short HEAD)
-GIT_REMOTE_URL  = $(shell git config --get remote.origin.url)
-endif
 
 .PHONY: all lint test dependencies build image run deploy install fmt vet generate
 
@@ -53,24 +63,28 @@ copyright-check:
 	./build/copyright-check.sh $(TRAVIS_BRANCH) $(TRAVIS_PULL_REQUEST_BRANCH)
 
 # Run tests
-test:  dependencies
-	go test -v  -coverprofile=coverage.out  ./...
+test:
+	go test -v -coverprofile=coverage.out  ./...
 
-dependencies:
+test-dependencies:
 	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/
 	sudo mv /tmp/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH} /usr/local/kubebuilder
+	export PATH=$PATH:/usr/local/kubebuilder/bin
+
+dependencies: dependencies-go
+	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/
+	sudo mv /tmp/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH} /usr/local/kubebuilder
+
+dependencies-go:
 	go mod tidy
 	go mod download
 
 build:
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./iam-policy ./cmd/manager
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./build/_output/bin/iam-policy-controller ./cmd/manager
 
-local-test-image: export COMPONENT_INIT_COMMAND=./build/install-dependencies.sh
-local-test-image: export COMPONENT_BUILD_COMMAND=./build/build.sh
-local-test-image: export COMPONENT_TAG_EXTENSION=-localtest
-local-test-image: export GOOS=linux
-local-test-image:
-	@make component/build
+build-images:
+	@docker build -t ${IMAGE_NAME_AND_VERSION} -f ./Dockerfile .
+	@docker tag ${IMAGE_NAME_AND_VERSION} $(REGISTRY)/$(IMG):$(TAG)
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
@@ -100,3 +114,65 @@ vet:
 # Generate code
 generate:
 	go generate ./pkg/... ./cmd/...
+
+# e2e test section
+.PHONY: kind-bootstrap-cluster
+kind-bootstrap-cluster: kind-create-cluster install-crds kind-deploy-controller install-resources
+
+.PHONY: kind-bootstrap-cluster-dev
+kind-bootstrap-cluster-dev: kind-create-cluster install-crds install-resources
+
+check-env:
+ifndef DOCKER_USER
+	$(error DOCKER_USER is undefined)
+endif
+ifndef DOCKER_PASS
+	$(error DOCKER_PASS is undefined)
+endif
+
+kind-deploy-controller: check-env
+	@echo installing $(IMG)
+	kubectl create ns multicluster-endpoint
+	kubectl create secret -n multicluster-endpoint docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=${DOCKER_USER} --docker-password=${DOCKER_PASS}
+	kubectl apply -f deploy/ -n multicluster-endpoint
+
+kind-deploy-controller-dev:
+	@echo Pushing image to KinD cluster
+	kind load docker-image $(REGISTRY)/$(IMG):$(TAG) --name $(KIND_NAME)
+	@echo Installing $(IMG)
+	kubectl create ns $(KIND_NAMESPACE)
+	kubectl apply -f deploy/ -n $(KIND_NAMESPACE)
+	@echo "Patch deployment image"
+	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"imagePullPolicy\":\"Never\"}]}}}}"
+	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"image\":\"$(REGISTRY)/$(IMG):$(TAG)\"}]}}}}"
+	kubectl rollout status -n $(KIND_NAMESPACE) deployment $(IMG) --timeout=180s
+
+kind-create-cluster:
+	@echo "creating cluster"
+	kind create cluster --name $(KIND_NAME) $(KIND_ARGS)
+	kind get kubeconfig --name $(KIND_NAME) > $(PWD)/kubeconfig_managed
+
+kind-delete-cluster:
+	kind delete cluster --name $(KIND_NAME)
+
+install-crds:
+	@echo installing crds
+	kubectl apply -f deploy/crds/policy.open-cluster-management.io_iampolicies_crd.yaml
+
+install-resources:
+	@echo creating namespaces
+	kubectl create ns managed
+
+e2e-test:
+	${GOPATH}/bin/ginkgo -v --failFast --slowSpecThreshold=10 test/e2e
+
+e2e-dependencies:
+	go get github.com/onsi/ginkgo/ginkgo
+	go get github.com/onsi/gomega/...
+
+e2e-debug:
+	kubectl get all -n $(KIND_NAMESPACE)
+	kubectl get all -n managed
+	kubectl get iampolicies.policy.open-cluster-management.io --all-namespaces
+	kubectl describe pods -n $(KIND_NAMESPACE)
+	kubectl logs $$(kubectl get pods -n $(KIND_NAMESPACE) -o name | grep $(IMG)) -n $(KIND_NAMESPACE)

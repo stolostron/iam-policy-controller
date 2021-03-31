@@ -23,9 +23,9 @@ var iamPolicy = IamPolicy{
 	}}
 
 var iamPolicySpec = IamPolicySpec{
-	Severity:                        "high",
-	RemediationAction:               "enforce",
-	MaxClusterRoleBindingUsers:     1,
+	Severity:                   "high",
+	RemediationAction:          "enforce",
+	MaxClusterRoleBindingUsers: 1,
 }
 
 var typeMeta = metav1.TypeMeta{

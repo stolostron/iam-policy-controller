@@ -21,8 +21,9 @@ GOOS = $(shell go env GOOS)
 
 # Handle KinD configuration
 KIND_NAME ?= test-managed
-KIND_NAMESPACE ?= multicluster-endpoint
+KIND_NAMESPACE ?= open-cluster-management-agent-addon
 KIND_VERSION ?= latest
+WATCH_NAMESPACE ?= managed
 ifneq ($(KIND_VERSION), latest)
 	KIND_ARGS = --image kindest/node:$(KIND_VERSION)
 else
@@ -122,19 +123,11 @@ kind-bootstrap-cluster: kind-create-cluster install-crds kind-deploy-controller 
 .PHONY: kind-bootstrap-cluster-dev
 kind-bootstrap-cluster-dev: kind-create-cluster install-crds install-resources
 
-check-env:
-ifndef DOCKER_USER
-	$(error DOCKER_USER is undefined)
-endif
-ifndef DOCKER_PASS
-	$(error DOCKER_PASS is undefined)
-endif
-
-kind-deploy-controller: check-env
+kind-deploy-controller: install-crds
 	@echo installing $(IMG)
-	kubectl create ns multicluster-endpoint
-	kubectl create secret -n multicluster-endpoint docker-registry multiclusterhub-operator-pull-secret --docker-server=quay.io --docker-username=${DOCKER_USER} --docker-password=${DOCKER_PASS}
-	kubectl apply -f deploy/ -n multicluster-endpoint
+	kubectl create ns $(KIND_NAMESPACE) || true
+	kubectl apply -f deploy/ -n $(KIND_NAMESPACE)
+	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"env\":[{\"name\":\"WATCH_NAMESPACE\",\"value\":\"$(WATCH_NAMESPACE)\"}]}]}}}}"
 
 kind-deploy-controller-dev:
 	@echo Pushing image to KinD cluster
@@ -145,6 +138,7 @@ kind-deploy-controller-dev:
 	@echo "Patch deployment image"
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"imagePullPolicy\":\"Never\"}]}}}}"
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"image\":\"$(REGISTRY)/$(IMG):$(TAG)\"}]}}}}"
+	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"env\":[{\"name\":\"WATCH_NAMESPACE\",\"value\":\"$(WATCH_NAMESPACE)\"}]}]}}}}"
 	kubectl rollout status -n $(KIND_NAMESPACE) deployment $(IMG) --timeout=180s
 
 kind-create-cluster:
@@ -157,11 +151,11 @@ kind-delete-cluster:
 
 install-crds:
 	@echo installing crds
-	kubectl apply -f deploy/crds/policy.open-cluster-management.io_iampolicies_crd.yaml
+	kubectl apply -f deploy/crds/v1/policy.open-cluster-management.io_iampolicies.yaml
 
 install-resources:
 	@echo creating namespaces
-	kubectl create ns managed
+	kubectl create ns $(WATCH_NAMESPACE)
 
 e2e-test:
 	${GOPATH}/bin/ginkgo -v --failFast --slowSpecThreshold=10 test/e2e
@@ -172,7 +166,7 @@ e2e-dependencies:
 
 e2e-debug:
 	kubectl get all -n $(KIND_NAMESPACE)
-	kubectl get all -n managed
+	kubectl get all -n $(WATCH_NAMESPACE)
 	kubectl get iampolicies.policy.open-cluster-management.io --all-namespaces
 	kubectl describe pods -n $(KIND_NAMESPACE)
 	kubectl logs $$(kubectl get pods -n $(KIND_NAMESPACE) -o name | grep $(IMG)) -n $(KIND_NAMESPACE)

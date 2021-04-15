@@ -28,3 +28,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "iam-policy-controller"
+          args:
+            - "--enable-lease=true"

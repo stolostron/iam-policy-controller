@@ -9,6 +9,7 @@
 package iampolicy
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -124,7 +125,7 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 	// Create a ReconcileIamPolicy object with the scheme and fake client.
 	r := &ReconcileIamPolicy{client: cl, scheme: s, recorder: nil}
 	var simpleClient kubernetes.Interface = testclient.NewSimpleClientset()
-	simpleClient.CoreV1().Namespaces().Create(&ns)
+	simpleClient.CoreV1().Namespaces().Create(context.TODO(), &ns, metav1.CreateOptions{})
 	common.Initialize(&simpleClient, nil)
 	res, err := r.Reconcile(req)
 	if err != nil {
@@ -229,7 +230,7 @@ func TestHandleAddingPolicy(t *testing.T) {
 		TypeMeta:   typeMeta,
 		ObjectMeta: objMeta,
 	}
-	simpleClient.CoreV1().Namespaces().Create(&ns)
+	simpleClient.CoreV1().Namespaces().Create(context.TODO(), &ns, metav1.CreateOptions{})
 	common.Initialize(&simpleClient, nil)
 	handleAddingPolicy(&iamPolicy)
 	policy, found := availablePolicies.GetObject(iamPolicy.Namespace + "." + iamPolicy.Name)

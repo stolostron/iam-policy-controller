@@ -243,7 +243,7 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 	// group the policies with cluster users and the ones with groups
 	// take the plc with min users and groups and make it your baseline
 
-	ClusteRoleBindingList, err := (*common.KubeClient).RbacV1().ClusterRoleBindings().List(metav1.ListOptions{})
+	ClusteRoleBindingList, err := (*common.KubeClient).RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("reason: communication error, subject: k8s API server, namespace: all, "+
 			"according to policy: none, additional-info: %v\n", err)

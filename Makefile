@@ -166,6 +166,7 @@ e2e-dependencies:
 
 e2e-debug:
 	kubectl get all -n $(KIND_NAMESPACE)
+	kubectl get leases -n $(KIND_NAMESPACE)
 	kubectl get all -n $(WATCH_NAMESPACE)
 	kubectl get iampolicies.policy.open-cluster-management.io --all-namespaces
 	kubectl describe pods -n $(KIND_NAMESPACE)

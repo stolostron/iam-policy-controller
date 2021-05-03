@@ -23,7 +23,8 @@ GOOS = $(shell go env GOOS)
 KIND_NAME ?= test-managed
 KIND_NAMESPACE ?= open-cluster-management-agent-addon
 KIND_VERSION ?= latest
-WATCH_NAMESPACE ?= managed
+MANAGED_CLUSTER_NAME ?= managed
+WATCH_NAMESPACE ?= $(MANAGED_CLUSTER_NAME)
 ifneq ($(KIND_VERSION), latest)
 	KIND_ARGS = --image kindest/node:$(KIND_VERSION)
 else
@@ -128,6 +129,8 @@ kind-deploy-controller: install-crds
 	kubectl create ns $(KIND_NAMESPACE) || true
 	kubectl apply -f deploy/ -n $(KIND_NAMESPACE)
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"env\":[{\"name\":\"WATCH_NAMESPACE\",\"value\":\"$(WATCH_NAMESPACE)\"}]}]}}}}"
+
+deploy-controller: kind-deploy-controller
 
 kind-deploy-controller-dev:
 	@echo Pushing image to KinD cluster

@@ -1,4 +1,9 @@
-approvers:
+# Owners
+
+See the OWNERS docs: https://git.k8s.io/community/contributors/guide/owners.md
+
+## Approvers
+
 - ChunxiAlexLuo
 - ckandag
 - dhaiducek
@@ -6,12 +11,11 @@ approvers:
 - willkutler
 - ycao56
 
+## Reviewers
 
-reviewers:
 - ChunxiAlexLuo
 - ckandag
 - dhaiducek
 - gparvin
 - willkutler
 - ycao56
-

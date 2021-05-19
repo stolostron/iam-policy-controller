@@ -97,9 +97,14 @@ install: manifests
 	kubectl apply -f config/crds
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests
-	kubectl apply -f config/crds
-	kustomize build config/default | kubectl apply -f -
+deploy:
+	kubectl apply -f deploy/ -n $(CONTROLLER_NAMESPACE)
+	kubectl apply -f deploy/crds/ -n $(CONTROLLER_NAMESPACE)
+	kubectl set env deployment/$(IMG) -n $(CONTROLLER_NAMESPACE) WATCH_NAMESPACE=$(WATCH_NAMESPACE)
+
+create-ns:
+	@kubectl create namespace $(CONTROLLER_NAMESPACE) || true
+	@kubectl create namespace $(WATCH_NAMESPACE) || true
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:

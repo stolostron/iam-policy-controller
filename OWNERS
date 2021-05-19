@@ -1,21 +1,18 @@
-# Owners
-
-See the OWNERS docs: https://git.k8s.io/community/contributors/guide/owners.md
-
-## Approvers
-
+approvers:
 - ChunxiAlexLuo
 - ckandag
 - dhaiducek
 - gparvin
 - willkutler
 - ycao56
+- JustinKuli
 
-## Reviewers
 
+reviewers:
 - ChunxiAlexLuo
 - ckandag
 - dhaiducek
 - gparvin
 - willkutler
 - ycao56
+- JustinKuli

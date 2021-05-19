@@ -6,7 +6,7 @@
 
 ## Description
 
-The IAM policy controller is a controller that watches `IamPolicies` created to monitor IAM cluster role bindings used within a Kubernetes cluster. It detects the number of cluster role bindings and reports whether or not a given `IamPolicy` is compliant or noncompliant.
+The IAM policy controller is a controller that watches `IamPolicies` created to monitor IAM cluster role bindings used within a Kubernetes cluster. It detects the number of cluster role bindings and reports whether or not a given `IamPolicy` is compliant or noncompliant.The controller can be run as a stand-alone program or as an integrated part of governing risk with the Open Cluster Management project.
 
 | Field | Description |
 | ---- | ---- |
@@ -113,8 +113,6 @@ Go to the [Contributing guide](CONTRIBUTING.md) to learn how to get involved.
        export WATCH_NAMESPACE=managed
        make e2e-test
        ```
-
-       - The `<repo_name>` is part of the `open-cluster-management` community. For more information, visit: [open-cluster-management.io](https://open-cluster-management.io).
 
 ## References
 

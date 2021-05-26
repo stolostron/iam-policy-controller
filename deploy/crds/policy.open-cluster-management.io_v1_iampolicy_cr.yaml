@@ -14,3 +14,4 @@ spec:
   remediationAction: inform # enforce or inform
   severity: medium
   maxClusterRoleBindingUsers: 5
+  clusterRole: "cluster-admin"

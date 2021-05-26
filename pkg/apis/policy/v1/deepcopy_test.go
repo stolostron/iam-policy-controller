@@ -26,6 +26,7 @@ var iamPolicySpec = IamPolicySpec{
 	Severity:                   "high",
 	RemediationAction:          "enforce",
 	MaxClusterRoleBindingUsers: 1,
+	ClusterRole:                "cluster-admin",
 }
 
 var typeMeta = metav1.TypeMeta{

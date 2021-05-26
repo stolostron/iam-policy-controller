@@ -251,9 +251,19 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 	}
 
 	update := false
-	clusterLevelUsers := checkAllClusterLevel(ClusteRoleBindingList)
 	for _, policy := range plcMap {
 		var userViolationCount int
+
+		clusterRoleRef := "cluster-admin"
+		if policy.Spec.ClusterRole != "" {
+			clusterRoleRef = policy.Spec.ClusterRole
+		}
+		glog.Errorf("ckandag : roleref : %v , max bindings %v", clusterRoleRef, policy.Spec.MaxClusterRoleBindingUsers)
+
+		clusterLevelUsers := checkAllClusterLevel(ClusteRoleBindingList, clusterRoleRef)
+
+		glog.Errorf("ckandag : usercount %v", clusterLevelUsers)
+
 		if policy.Spec.MaxClusterRoleBindingUsers < clusterLevelUsers && policy.Spec.MaxClusterRoleBindingUsers >= 0 {
 			userViolationCount = clusterLevelUsers - policy.Spec.MaxClusterRoleBindingUsers
 		}
@@ -266,14 +276,22 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 	return update, nil
 }
 
-func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList) (userV int) {
+func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList, clusterroleref string) (userV int) {
 
 	usersMap := make(map[string]bool)
 	for _, clusterRoleBinding := range clusterRoleBindingList.Items {
-		for _, subject := range clusterRoleBinding.Subjects {
-			if subject.Kind == "User" && !strings.HasPrefix(clusterRoleBinding.Name, "system") {
-				usersMap[subject.Name] = true
+		//if not system binding
+		if !strings.HasPrefix(clusterRoleBinding.Name, "system") {
+			//Only consider role bindings with matching referenced cluster role
+			var roleRef = clusterRoleBinding.RoleRef
+			if roleRef.Kind == "ClusterRole" && roleRef.Name == clusterroleref {
+				for _, subject := range clusterRoleBinding.Subjects {
+					if subject.Kind == "User" {
+						usersMap[subject.Name] = true
+					}
+				}
 			}
+
 		}
 	}
 	return len(usersMap)

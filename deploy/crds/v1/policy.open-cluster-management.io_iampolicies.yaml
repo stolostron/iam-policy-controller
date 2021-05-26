@@ -39,6 +39,10 @@ spec:
               maxClusterRoleBindingUsers:
                 description: Maximum number of cluster role binding users still valid before it is considered non-compliant
                 type: integer
+              clusterRole:
+                description: Cluster Role referenced by the  cluster role bindings,
+                  if not specified defaults to cluster-admin
+                type: string
               namespaceSelector:
                 description: Selecting a list of namespaces where the policy applies
                 properties:

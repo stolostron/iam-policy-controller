@@ -6,11 +6,12 @@
 
 ## Description
 
-The IAM policy controller is a controller that watches `IamPolicies` created to monitor IAM cluster role bindings used within a Kubernetes cluster. It detects the number of cluster role bindings and reports whether or not a given `IamPolicy` is compliant or noncompliant.The controller can be run as a stand-alone program or as an integrated part of governing risk with the Open Cluster Management project.
+The IAM policy controller is a controller that watches `IamPolicies` created to monitor IAM cluster role bindings used within a Kubernetes cluster. It detects the number of users with cluster role bindings to a given clusterrole and reports whether or not a given `IamPolicy` is compliant or noncompliant.The controller can be run as a stand-alone program or as an integrated part of governing risk with the Open Cluster Management project.
 
 | Field | Description |
 | ---- | ---- |
 | maxClusterRoleBindingUsers | Required: Maximum number of cluster role binding still valid before it is considered as non-compliant. |
+| ClusterRole | Optional: Cluster role referenced in the cluster role bindings, default to cluster-admin. |
 
 Following is an example spec of a `IamPolicy` resource:
 

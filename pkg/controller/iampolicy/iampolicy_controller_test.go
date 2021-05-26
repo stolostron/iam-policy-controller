@@ -195,8 +195,8 @@ func TestCheckAllClusterLevel(t *testing.T) {
 	var clusterRoleBindingList = sub.ClusterRoleBindingList{
 		Items: items,
 	}
-	var users = checkAllClusterLevel(&clusterRoleBindingList)
-	assert.Equal(t, 1, users)
+	var users = checkAllClusterLevel(&clusterRoleBindingList, "test")
+	assert.Equal(t, 0, users)
 }
 
 func TestPrintMap(t *testing.T) {

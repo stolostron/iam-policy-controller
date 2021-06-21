@@ -60,7 +60,7 @@ func main() {
 	// controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
-	var clusterName, namespace, eventOnParent, hubConfigSecretNs, hubConfigSecretName string
+	var clusterName, namespace, eventOnParent string
 	var frequency uint
 	var enableLease bool
 	pflag.StringVar(&namespace, "watch-ns", "default", "Watched Kubernetes namespace")
@@ -68,8 +68,6 @@ func main() {
 	pflag.StringVar(&eventOnParent, "parent-event", "ifpresent", "to also send status events on parent policy. options are: yes/no/ifpresent")
 	pflag.StringVar(&clusterName, "cluster-name", "mcm-managed-cluster", "Name of the cluster")
 	pflag.BoolVar(&enableLease, "enable-lease", false, "If enabled, the controller will start the lease controller to report its status")
-	pflag.StringVar(&hubConfigSecretNs, "hubconfig-secret-ns", "open-cluster-management-agent-addon", "Namespace for hub config kube-secret")
-	pflag.StringVar(&hubConfigSecretName, "hubconfig-secret-name", "iam-policy-controller-hub-kubeconfig", "Name of the hub config kube-secret")
 
 	pflag.Parse()
 
@@ -133,8 +131,6 @@ func main() {
 	// Initialize some variables
 	var generatedClient kubernetes.Interface = kubernetes.NewForConfigOrDie(mgr.GetConfig())
 	common.Initialize(&generatedClient, cfg)
-	hubCfg, _ := common.LoadHubConfig(hubConfigSecretNs, hubConfigSecretName)
-
 	policyStatusHandler.Initialize(&generatedClient, mgr, clusterName, namespace, eventOnParent) /* #nosec G104 */
 	// PeriodicallyExecIamPolicies is the go-routine that periodically checks the policies and does the needed work to make sure the desired state is achieved
 	go policyStatusHandler.PeriodicallyExecIamPolicies(frequency)
@@ -149,15 +145,12 @@ func main() {
 				os.Exit(1)
 			}
 		} else {
-			//hubCfg, _ := common.LoadHubConfig(hubConfigSecretNs, hubConfigSecretName)
-
 			log.Info("Starting lease controller to report status")
 			leaseUpdater := lease.NewLeaseUpdater(
 				generatedClient,
 				"iam-policy-controller",
 				operatorNs,
-			).WithHubLeaseConfig(hubCfg, clusterName)
-
+			)
 			go leaseUpdater.Start(ctx)
 		}
 	} else {

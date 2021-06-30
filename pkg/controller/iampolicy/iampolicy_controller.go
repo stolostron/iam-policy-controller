@@ -258,11 +258,7 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 		if policy.Spec.ClusterRole != "" {
 			clusterRoleRef = policy.Spec.ClusterRole
 		}
-		glog.Errorf("ckandag : roleref : %v , max bindings %v", clusterRoleRef, policy.Spec.MaxClusterRoleBindingUsers)
-
 		clusterLevelUsers := checkAllClusterLevel(ClusteRoleBindingList, clusterRoleRef)
-
-		glog.Errorf("ckandag : usercount %v", clusterLevelUsers)
 
 		if policy.Spec.MaxClusterRoleBindingUsers < clusterLevelUsers && policy.Spec.MaxClusterRoleBindingUsers >= 0 {
 			userViolationCount = clusterLevelUsers - policy.Spec.MaxClusterRoleBindingUsers

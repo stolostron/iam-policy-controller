@@ -66,8 +66,17 @@ spec:
             description: IamPolicyStatus defines the observed state of IamPolicy
             properties:
               compliancyDetails:
-                description: Compliant, NonCompliant, UnkownCompliancy
+                description: Compliancy  details
                 type: object
+                additionalProperties:
+                  description: per policies
+                  type: object
+                  additionalProperties:
+                    description: per namespace
+                    type: array
+                    items:
+                      description: list of violation msgs
+                      type: string
               compliant:
                 description: ComplianceState shows the state of enforcement
                 type: string

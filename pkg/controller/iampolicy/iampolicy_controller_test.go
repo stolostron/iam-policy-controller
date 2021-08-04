@@ -18,6 +18,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/dynamic"
+	testdynamicclient "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -33,7 +35,7 @@ var mgr manager.Manager
 var err error
 
 func TestInitialize(t *testing.T) {
-	result := Initialize(nil, nil, "test", "test", "test")
+	result := Initialize(nil, nil, nil, "test", "test", "test")
 	assert.Nil(t, result)
 }
 
@@ -178,25 +180,84 @@ func TestEnsureDefaultLabel(t *testing.T) {
 	assert.True(t, updateNeeded)
 }
 
+func TestGetGroupMembership(t *testing.T) {
+	tests := []struct {
+		group         group
+		expectedUsers []string
+	}{
+		{
+			group{ObjectMeta: metav1.ObjectMeta{Name: "admins"}, Users: []string{"tom.hanks"}},
+			[]string{"tom.hanks"},
+		},
+		{
+			group{ObjectMeta: metav1.ObjectMeta{Name: "admins"}, Users: []string{"tom.hanks", "tom.brady"}},
+			[]string{"tom.hanks", "tom.brady"},
+		},
+		{
+			group{ObjectMeta: metav1.ObjectMeta{Name: "admins"}, Users: nil},
+			[]string{},
+		},
+	}
+
+	for _, test := range tests {
+		// Restore KubeDynamicClient after the test
+		oldDynamicClient := KubeDynamicClient
+		defer func() { KubeDynamicClient = oldDynamicClient }()
+
+		// Register the OpenShift Group type with the runtime scheme
+		s := scheme.Scheme
+		s.AddKnownTypes(groupGV, &group{})
+		var client dynamic.Interface = testdynamicclient.NewSimpleDynamicClient(s, &test.group)
+		KubeDynamicClient = &client
+
+		users, err := getGroupMembership(test.group.Name)
+		assert.Nil(t, err)
+		assert.Equal(t, test.expectedUsers, users)
+	}
+}
+
 func TestCheckAllClusterLevel(t *testing.T) {
-	var subject = sub.Subject{
+	// Restore KubeDynamicClient after the test
+	oldDynamicClient := KubeDynamicClient
+	defer func() { KubeDynamicClient = oldDynamicClient }()
+
+	// Register the OpenShift Group type with the runtime scheme
+	s := scheme.Scheme
+	s.AddKnownTypes(groupGV, &group{})
+	groupObj := group{ObjectMeta: metav1.ObjectMeta{Name: "admins"}, Users: []string{"tom.hanks"}}
+	var client dynamic.Interface = testdynamicclient.NewSimpleDynamicClient(s, &groupObj)
+	KubeDynamicClient = &client
+
+	var userSubject = sub.Subject{
 		APIGroup:  "",
 		Kind:      "User",
 		Name:      "user1",
 		Namespace: "default",
 	}
-	var subjects = []sub.Subject{}
-	subjects = append(subjects, subject)
+	var groupSubject = sub.Subject{
+		APIGroup:  "",
+		Kind:      "Group",
+		Name:      "admins",
+		Namespace: "default",
+	}
+
 	var clusterRoleBinding = sub.ClusterRoleBinding{
-		Subjects: subjects,
+		Subjects: []sub.Subject{userSubject, groupSubject},
+		RoleRef: sub.RoleRef{
+			Kind: "ClusterRole",
+			Name: "cluster-admin",
+		},
 	}
 	var items = []sub.ClusterRoleBinding{}
 	items = append(items, clusterRoleBinding)
 	var clusterRoleBindingList = sub.ClusterRoleBindingList{
 		Items: items,
 	}
-	var users = checkAllClusterLevel(&clusterRoleBindingList, "test")
-	assert.Equal(t, 0, users)
+	users, err := checkAllClusterLevel(&clusterRoleBindingList, "cluster-admin")
+	// This should be two since there is one subject that is a user and one
+	// subject that is a group with a single user
+	assert.Nil(t, err)
+	assert.Equal(t, 2, users)
 }
 
 func TestPrintMap(t *testing.T) {
@@ -262,4 +323,85 @@ func TestGetContainerID(t *testing.T) {
 		Status: podStatus,
 	}
 	getContainerID(pod, "foo")
+}
+
+func TestAddViolationCount(t *testing.T) {
+
+	tests := []struct {
+		compliancyDetails map[string]map[string][]string
+		userCount         int
+		roleName          string
+		expectedMsg       string
+		expectedChange    bool
+	}{
+		{
+			nil,
+			5,
+			"cluster-admin",
+			"The number of users with the cluster-admin role is at least 5 above the specified limit",
+			true,
+		},
+		{
+			map[string]map[string][]string{},
+			5,
+			"cluster-admin",
+			"The number of users with the cluster-admin role is at least 5 above the specified limit",
+			true,
+		},
+		{
+			nil,
+			3,
+			"cluster-admin",
+			"The number of users with the cluster-admin role is at least 3 above the specified limit",
+			true,
+		},
+		{
+			nil,
+			5,
+			"admins",
+			"The number of users with the admins role is at least 5 above the specified limit",
+			true,
+		},
+		{
+			map[string]map[string][]string{"foo": {}},
+			5,
+			"cluster-admin",
+			"The number of users with the cluster-admin role is at least 5 above the specified limit",
+			true,
+		},
+		{
+			map[string]map[string][]string{"foo": {"cluster-wide": {}}},
+			5,
+			"cluster-admin",
+			"The number of users with the cluster-admin role is at least 5 above the specified limit",
+			true,
+		},
+		{
+			map[string]map[string][]string{"foo": {"cluster-wide": {"The number of users with the cluster-admin role is at least 5 above the specified limit"}}},
+			5,
+			"cluster-admin",
+			"The number of users with the cluster-admin role is at least 5 above the specified limit",
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		policy := &policiesv1.IamPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "foo",
+				Namespace: "default",
+			},
+			Spec: policiesv1.IamPolicySpec{
+				MaxClusterRoleBindingUsers: 1,
+			},
+			Status: policiesv1.IamPolicyStatus{
+				CompliancyDetails: test.compliancyDetails,
+			},
+		}
+
+		changed := addViolationCount(policy, test.roleName, test.userCount, "cluster-wide")
+
+		assert.Equal(t, test.expectedChange, changed)
+		assert.Equal(t, test.expectedMsg, policy.Status.CompliancyDetails["foo"]["cluster-wide"][0])
+	}
 }

@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -132,9 +133,10 @@ func main() {
 
 	// Initialize some variables
 	var generatedClient kubernetes.Interface = kubernetes.NewForConfigOrDie(mgr.GetConfig())
+	var dynamicClient dynamic.Interface = dynamic.NewForConfigOrDie(mgr.GetConfig())
 	common.Initialize(&generatedClient, cfg)
 
-	policyStatusHandler.Initialize(&generatedClient, mgr, clusterName, namespace, eventOnParent) /* #nosec G104 */
+	policyStatusHandler.Initialize(&generatedClient, &dynamicClient, mgr, clusterName, namespace, eventOnParent) /* #nosec G104 */
 	// PeriodicallyExecIamPolicies is the go-routine that periodically checks the policies and does the needed work to make sure the desired state is achieved
 	go policyStatusHandler.PeriodicallyExecIamPolicies(frequency)
 

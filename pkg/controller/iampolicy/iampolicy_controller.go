@@ -263,7 +263,7 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 		if policy.Spec.MaxClusterRoleBindingUsers < clusterLevelUsers && policy.Spec.MaxClusterRoleBindingUsers >= 0 {
 			userViolationCount = clusterLevelUsers - policy.Spec.MaxClusterRoleBindingUsers
 		}
-		if addViolationCount(policy, userViolationCount, "cluster-wide") {
+		if addViolationCount(policy, clusterRoleRef, userViolationCount, "cluster-wide") {
 			plcToUpdateMap[policy.Name] = policy
 			update = true
 		}
@@ -301,12 +301,12 @@ func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 	return plcMap
 }
 
-func addViolationCount(plc *policiesv1.IamPolicy, userCount int, namespace string) bool {
+func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int, namespace string) bool {
 
 	changed := false
 	// DO NOT change the message below without also considering that it is parsed to obtain
 	// the count from the previous status!
-	msg := fmt.Sprintf("Number of users with clusteradmin role is %s above the specified limit", fmt.Sprint(userCount))
+	msg := fmt.Sprintf("The number of users with the %s role is %s above the specified limit", roleName, fmt.Sprint(userCount))
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
 	}

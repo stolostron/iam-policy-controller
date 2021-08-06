@@ -60,6 +60,7 @@ var NamespaceWatched string
 // EventOnParent specifies if we also want to send events to the parent policy. Available options are yes/no/ifpresent
 var EventOnParent string
 
+// Formats the reason section of generated events
 var formatString string = "policy: %s/%s"
 
 // A way to allow exiting out of the periodic policy check loop

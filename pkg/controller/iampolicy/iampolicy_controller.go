@@ -11,6 +11,8 @@ package iampolicy
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -41,8 +43,6 @@ const Finalizer = "finalizer.mcm.ibm.com"
 
 const grcCategory = "system-and-information-integrity"
 
-var clusterName = "managedCluster"
-
 // availablePolicies is a cach all all available polices
 var availablePolicies common.SyncedPolicyMap
 
@@ -60,10 +60,18 @@ var NamespaceWatched string
 // EventOnParent specifies if we also want to send events to the parent policy. Available options are yes/no/ifpresent
 var EventOnParent string
 
+// Formats the reason section of generated events
 var formatString string = "policy: %s/%s"
 
 // A way to allow exiting out of the periodic policy check loop
 var exitExecLoop string
+
+// Format string taking the role name and the user count to create the violation message
+const violationMsgF = "The number of users with the %s role is %s above the specified limit"
+
+// Format string taking the role name to make the regex to extract the usercount from the violation message
+// Reminder: always `regexp.QuoteMeta` the input here.
+const violationMsgFUserCountRegex = `^(?:The number of users with the %s role is )(\d+)(?: above the specified limit)$`
 
 // Initialize to initialize some controller varaibles
 func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, namespace,
@@ -71,9 +79,6 @@ func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, nam
 	KubeClient = kClient
 	PlcChan = make(chan *policiesv1.IamPolicy, 100) //buffering up to 100 policies for update
 
-	if clsName != "" {
-		clusterName = clsName
-	}
 	NamespaceWatched = namespace
 
 	EventOnParent = strings.ToLower(eventParent)
@@ -267,7 +272,7 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 			plcToUpdateMap[policy.Name] = policy
 			update = true
 		}
-		checkComplianceBasedOnDetails(policy)
+		checkComplianceBasedOnDetails(policy, clusterRoleRef)
 	}
 	return update, nil
 }
@@ -301,12 +306,8 @@ func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 	return plcMap
 }
 
-func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int, namespace string) bool {
-
-	changed := false
-	// DO NOT change the message below without also considering that it is parsed to obtain
-	// the count from the previous status!
-	msg := fmt.Sprintf("The number of users with the %s role is %s above the specified limit", roleName, fmt.Sprint(userCount))
+func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int, namespace string) (changed bool) {
+	msg := fmt.Sprintf(violationMsgF, roleName, fmt.Sprint(userCount))
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
 	}
@@ -319,21 +320,17 @@ func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int
 	}
 	if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
 		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
-		changed = true
-		return changed
+		return true
 	}
-	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-	if len(firstNum) >= 7 {
-		if firstNum[7] == fmt.Sprint(userCount) {
-			return changed
-		}
+	oldUserCount, err := extractUserCount(plc.Status.CompliancyDetails[plc.Name][namespace][0], roleName)
+	if err == nil && oldUserCount == userCount {
+		return false
 	}
 	plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
-	changed = true
-	return changed
+	return true
 }
 
-func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy) {
+func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy, roleName string) {
 	plc.Status.ComplianceState = policiesv1.Compliant
 	if plc.Status.CompliancyDetails == nil {
 		return
@@ -345,15 +342,12 @@ func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy) {
 		return
 	}
 	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
-		if len(msgList) > 0 {
-			violationNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-			if len(violationNum) >= 7 {
-				if violationNum[7] != fmt.Sprint(0) && strings.HasPrefix(violationNum[0], "Number") {
-					plc.Status.ComplianceState = policiesv1.NonCompliant
-				}
-			}
-		} else {
+		if len(msgList) == 0 {
 			return
+		}
+		userCount, err := extractUserCount(plc.Status.CompliancyDetails[plc.Name][namespace][0], roleName)
+		if err == nil && userCount != 0 {
+			plc.Status.ComplianceState = policiesv1.NonCompliant
 		}
 	}
 }
@@ -382,6 +376,19 @@ func updatePolicyStatus(policies map[string]*policiesv1.IamPolicy) (*policiesv1.
 		}
 	}
 	return nil, nil
+}
+
+func extractUserCount(msg, roleName string) (int, error) {
+	regexStr := fmt.Sprintf(violationMsgFUserCountRegex, regexp.QuoteMeta(roleName))
+	re, err := regexp.Compile(regexStr)
+	if err != nil {
+		return 0, err
+	}
+	regexGroups := re.FindStringSubmatch(msg)
+	if len(regexGroups) < 1 {
+		return 0, fmt.Errorf("could not find userCount in message")
+	}
+	return strconv.Atoi(regexGroups[1])
 }
 
 func getContainerID(pod corev1.Pod, containerName string) string {

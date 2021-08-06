@@ -18,7 +18,7 @@ ENV OPERATOR=/usr/local/bin/${COMPONENT} \
     USER_UID=1001 \
     USER_NAME=${COMPONENT}
 
-# install operator binary
+# install the operator binary
 COPY --from=builder ${REPO_PATH}/build/_output/bin/${COMPONENT} ${OPERATOR}
 
 COPY --from=builder ${REPO_PATH}/build/bin /usr/local/bin

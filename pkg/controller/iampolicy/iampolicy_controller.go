@@ -11,6 +11,7 @@ package iampolicy
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -65,7 +66,12 @@ var formatString string = "policy: %s/%s"
 // A way to allow exiting out of the periodic policy check loop
 var exitExecLoop string
 
-const idxOfUserCount = 9
+// Format string taking the role name and the user count to create the violation message
+const violationMsgF = "The number of users with the %s role is %s above the specified limit"
+
+// Format string taking the role name to make the regex to extract the usercount from the violation message
+// Reminder: always `regexp.QuoteMeta` the input here.
+const violationMsgFUserCountRegex = `^(?:The number of users with the %s role is )(\d+)(?: above the specified limit)$`
 
 // Initialize to initialize some controller varaibles
 func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, namespace,
@@ -269,7 +275,7 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 			plcToUpdateMap[policy.Name] = policy
 			update = true
 		}
-		checkComplianceBasedOnDetails(policy)
+		checkComplianceBasedOnDetails(policy, clusterRoleRef)
 	}
 	return update, nil
 }
@@ -303,12 +309,8 @@ func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 	return plcMap
 }
 
-func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int, namespace string) bool {
-
-	changed := false
-	// DO NOT change the message below without also considering that it is parsed to obtain
-	// the count from the previous status! Look for idxOfUserCount
-	msg := fmt.Sprintf("The number of users with the %s role is %s above the specified limit", roleName, fmt.Sprint(userCount))
+func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int, namespace string) (changed bool) {
+	msg := fmt.Sprintf(violationMsgF, roleName, fmt.Sprint(userCount))
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
 	}
@@ -321,21 +323,21 @@ func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int
 	}
 	if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
 		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
-		changed = true
-		return changed
+		return true
 	}
-	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-	if len(firstNum) > idxOfUserCount {
-		if firstNum[idxOfUserCount] == fmt.Sprint(userCount) {
-			return changed
+	regexStr := fmt.Sprintf(violationMsgFUserCountRegex, regexp.QuoteMeta(roleName))
+	re := regexp.MustCompile(regexStr)
+	regexGroups := re.FindStringSubmatch(plc.Status.CompliancyDetails[plc.Name][namespace][0])
+	if len(regexGroups) > 1 {
+		if regexGroups[1] == fmt.Sprint(userCount) {
+			return false
 		}
 	}
 	plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
-	changed = true
-	return changed
+	return true
 }
 
-func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy) {
+func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy, roleName string) {
 	plc.Status.ComplianceState = policiesv1.Compliant
 	if plc.Status.CompliancyDetails == nil {
 		return
@@ -348,9 +350,11 @@ func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy) {
 	}
 	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
 		if len(msgList) > 0 {
-			violationNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-			if len(violationNum) > idxOfUserCount {
-				if violationNum[idxOfUserCount] != fmt.Sprint(0) && strings.HasPrefix(violationNum[0], "The") {
+			regexStr := fmt.Sprintf(violationMsgFUserCountRegex, regexp.QuoteMeta(roleName))
+			re := regexp.MustCompile(regexStr)
+			regexGroups := re.FindStringSubmatch(plc.Status.CompliancyDetails[plc.Name][namespace][0])
+			if len(regexGroups) > 1 {
+				if regexGroups[1] != fmt.Sprint(0) {
 					plc.Status.ComplianceState = policiesv1.NonCompliant
 				}
 			}

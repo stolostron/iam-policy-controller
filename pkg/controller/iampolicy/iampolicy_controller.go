@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -325,13 +326,9 @@ func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int
 		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
 		return true
 	}
-	regexStr := fmt.Sprintf(violationMsgFUserCountRegex, regexp.QuoteMeta(roleName))
-	re := regexp.MustCompile(regexStr)
-	regexGroups := re.FindStringSubmatch(plc.Status.CompliancyDetails[plc.Name][namespace][0])
-	if len(regexGroups) > 1 {
-		if regexGroups[1] == fmt.Sprint(userCount) {
-			return false
-		}
+	oldUserCount, err := extractUserCount(plc.Status.CompliancyDetails[plc.Name][namespace][0], roleName)
+	if err == nil && oldUserCount == userCount {
+		return false
 	}
 	plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
 	return true
@@ -349,17 +346,12 @@ func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy, roleName string) {
 		return
 	}
 	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
-		if len(msgList) > 0 {
-			regexStr := fmt.Sprintf(violationMsgFUserCountRegex, regexp.QuoteMeta(roleName))
-			re := regexp.MustCompile(regexStr)
-			regexGroups := re.FindStringSubmatch(plc.Status.CompliancyDetails[plc.Name][namespace][0])
-			if len(regexGroups) > 1 {
-				if regexGroups[1] != fmt.Sprint(0) {
-					plc.Status.ComplianceState = policiesv1.NonCompliant
-				}
-			}
-		} else {
+		if len(msgList) == 0 {
 			return
+		}
+		userCount, err := extractUserCount(plc.Status.CompliancyDetails[plc.Name][namespace][0], roleName)
+		if err == nil && userCount != 0 {
+			plc.Status.ComplianceState = policiesv1.NonCompliant
 		}
 	}
 }
@@ -388,6 +380,19 @@ func updatePolicyStatus(policies map[string]*policiesv1.IamPolicy) (*policiesv1.
 		}
 	}
 	return nil, nil
+}
+
+func extractUserCount(msg, roleName string) (int, error) {
+	regexStr := fmt.Sprintf(violationMsgFUserCountRegex, regexp.QuoteMeta(roleName))
+	re, err := regexp.Compile(regexStr)
+	if err != nil {
+		return 0, err
+	}
+	regexGroups := re.FindStringSubmatch(msg)
+	if len(regexGroups) < 1 {
+		return 0, fmt.Errorf("could not find userCount in message")
+	}
+	return strconv.Atoi(regexGroups[1])
 }
 
 func getContainerID(pod corev1.Pod, containerName string) string {

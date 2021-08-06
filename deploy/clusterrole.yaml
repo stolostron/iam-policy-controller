@@ -45,3 +45,9 @@ rules:
   - get
   - update
   - patch
+- apiGroups:
+  - user.openshift.io
+  resources:
+  - groups
+  verbs:
+  - get

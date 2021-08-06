@@ -24,7 +24,10 @@ import (
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,6 +46,14 @@ const Finalizer = "finalizer.mcm.ibm.com"
 
 const grcCategory = "system-and-information-integrity"
 
+// ClusterRoleBinding objects in OpenShift set the API group of a Group subject
+// to rbac.authorization.k8s.io even though it should be user.openshift.io.
+var openShiftGroupGVR = schema.GroupVersionResource{
+	Group:    "user.openshift.io",
+	Version:  "v1",
+	Resource: "groups",
+}
+
 // availablePolicies is a cach all all available polices
 var availablePolicies common.SyncedPolicyMap
 
@@ -51,6 +62,7 @@ var PlcChan chan *policiesv1.IamPolicy
 
 // KubeClient a k8s client used for k8s native resources
 var KubeClient *kubernetes.Interface
+var KubeDynamicClient *dynamic.Interface
 
 var reconcilingAgent *ReconcileIamPolicy
 
@@ -67,16 +79,17 @@ var formatString string = "policy: %s/%s"
 var exitExecLoop string
 
 // Format string taking the role name and the user count to create the violation message
-const violationMsgF = "The number of users with the %s role is %s above the specified limit"
+const violationMsgF = "The number of users with the %s role is at least %s above the specified limit"
 
 // Format string taking the role name to make the regex to extract the usercount from the violation message
 // Reminder: always `regexp.QuoteMeta` the input here.
-const violationMsgFUserCountRegex = `^(?:The number of users with the %s role is )(\d+)(?: above the specified limit)$`
+const violationMsgFUserCountRegex = `^(?:The number of users with the %s role is at least )(\d+)(?: above the specified limit)$`
 
 // Initialize to initialize some controller varaibles
-func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, namespace,
+func Initialize(kClient *kubernetes.Interface, kDynamicClient *dynamic.Interface, mgr manager.Manager, clsName, namespace,
 	eventParent string) (err error) {
 	KubeClient = kClient
+	KubeDynamicClient = kDynamicClient
 	PlcChan = make(chan *policiesv1.IamPolicy, 100) //buffering up to 100 policies for update
 
 	NamespaceWatched = namespace
@@ -140,6 +153,7 @@ type ReconcileIamPolicy struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=user.openshift.io,resources=groups,verbs=get
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
@@ -263,11 +277,36 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 		if policy.Spec.ClusterRole != "" {
 			clusterRoleRef = policy.Spec.ClusterRole
 		}
-		clusterLevelUsers := checkAllClusterLevel(ClusteRoleBindingList, clusterRoleRef)
+
+		clusterLevelUsers, err := checkAllClusterLevel(ClusteRoleBindingList, clusterRoleRef)
+		queryErrEncountered := false
+		if err != nil {
+			queryErrEncountered = true
+			glog.Infof("An error was encountered when getting the user list, so the policy %s can only go from no status or compliant to non-compliant", policy.Name)
+		}
+
+		glog.Infof("The user list was retrieved and %d were found", clusterLevelUsers)
 
 		if policy.Spec.MaxClusterRoleBindingUsers < clusterLevelUsers && policy.Spec.MaxClusterRoleBindingUsers >= 0 {
 			userViolationCount = clusterLevelUsers - policy.Spec.MaxClusterRoleBindingUsers
 		}
+
+		// Handle the case when there was an error getting the whole user list.
+		if queryErrEncountered {
+			// Even if there was an error getting the whole user list, as long as we know there is
+			// a violation, the policy should be updated to non-compliant unless it is already
+			// non-compliant. If it's already non-compliant, we don't want to only have the number
+			// of users change.
+			if userViolationCount > 0 {
+				if policy.Status.ComplianceState == policiesv1.NonCompliant {
+					continue
+				}
+			} else if policy.Status.ComplianceState != policiesv1.Compliant {
+				glog.Infof("Not changing non-compliant to compliant on policy %s due to the error that was encountered when getting the user list", policy.Name)
+				continue
+			}
+		}
+
 		if addViolationCount(policy, clusterRoleRef, userViolationCount, "cluster-wide") {
 			plcToUpdateMap[policy.Name] = policy
 			update = true
@@ -277,7 +316,30 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 	return update, nil
 }
 
-func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList, clusterroleref string) (userV int) {
+// getGroupMembership queries for the membership of an OpenShift group. If the group is not found
+// or is malformed, and empty string slice is returned. If the query itself failed, an error is
+// returned.
+func getGroupMembership(group string) ([]string, error) {
+	rv, err := (*KubeDynamicClient).Resource(openShiftGroupGVR).Get(context.TODO(), group, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			log.Info(fmt.Sprintf("The group %s was not found. It may not exist or may not be an OpenShift group.", group))
+			return []string{}, nil
+		}
+
+		return nil, fmt.Errorf("failed to get the OpenShift group %s: %w", group, err)
+	}
+
+	users, found, err := unstructured.NestedStringSlice(rv.Object, "users")
+	if err != nil || !found {
+		log.Info(fmt.Sprintf("The group %s was in an unexpected format", group))
+		return []string{}, nil
+	}
+
+	return users, nil
+}
+
+func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList, clusterroleref string) (userV int, err error) {
 
 	usersMap := make(map[string]bool)
 	for _, clusterRoleBinding := range clusterRoleBindingList.Items {
@@ -289,13 +351,23 @@ func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList, clu
 				for _, subject := range clusterRoleBinding.Subjects {
 					if subject.Kind == "User" {
 						usersMap[subject.Name] = true
+					} else if subject.Kind == "Group" {
+						users, err := getGroupMembership(subject.Name)
+						if err != nil {
+							log.Error(err, "The policy compliance will not be able to be fully determined")
+							continue
+						}
+
+						for _, user := range users {
+							usersMap[user] = true
+						}
 					}
 				}
 			}
 
 		}
 	}
-	return len(usersMap)
+	return len(usersMap), err
 }
 
 func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {

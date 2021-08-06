@@ -43,8 +43,6 @@ const Finalizer = "finalizer.mcm.ibm.com"
 
 const grcCategory = "system-and-information-integrity"
 
-var clusterName = "managedCluster"
-
 // availablePolicies is a cach all all available polices
 var availablePolicies common.SyncedPolicyMap
 
@@ -80,9 +78,6 @@ func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, nam
 	KubeClient = kClient
 	PlcChan = make(chan *policiesv1.IamPolicy, 100) //buffering up to 100 policies for update
 
-	if clsName != "" {
-		clusterName = clsName
-	}
 	NamespaceWatched = namespace
 
 	EventOnParent = strings.ToLower(eventParent)

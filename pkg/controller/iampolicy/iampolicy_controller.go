@@ -65,6 +65,8 @@ var formatString string = "policy: %s/%s"
 // A way to allow exiting out of the periodic policy check loop
 var exitExecLoop string
 
+const idxOfUserCount = 9
+
 // Initialize to initialize some controller varaibles
 func Initialize(kClient *kubernetes.Interface, mgr manager.Manager, clsName, namespace,
 	eventParent string) (err error) {
@@ -305,7 +307,7 @@ func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int
 
 	changed := false
 	// DO NOT change the message below without also considering that it is parsed to obtain
-	// the count from the previous status!
+	// the count from the previous status! Look for idxOfUserCount
 	msg := fmt.Sprintf("The number of users with the %s role is %s above the specified limit", roleName, fmt.Sprint(userCount))
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
@@ -323,8 +325,8 @@ func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int
 		return changed
 	}
 	firstNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-	if len(firstNum) >= 7 {
-		if firstNum[7] == fmt.Sprint(userCount) {
+	if len(firstNum) > idxOfUserCount {
+		if firstNum[idxOfUserCount] == fmt.Sprint(userCount) {
 			return changed
 		}
 	}
@@ -347,8 +349,8 @@ func checkComplianceBasedOnDetails(plc *policiesv1.IamPolicy) {
 	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
 		if len(msgList) > 0 {
 			violationNum := strings.Split(plc.Status.CompliancyDetails[plc.Name][namespace][0], " ")
-			if len(violationNum) >= 7 {
-				if violationNum[7] != fmt.Sprint(0) && strings.HasPrefix(violationNum[0], "Number") {
+			if len(violationNum) > idxOfUserCount {
+				if violationNum[idxOfUserCount] != fmt.Sprint(0) && strings.HasPrefix(violationNum[0], "The") {
 					plc.Status.ComplianceState = policiesv1.NonCompliant
 				}
 			}

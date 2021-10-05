@@ -85,6 +85,9 @@ const violationMsgF = "The number of users with the %s role is at least %s above
 // Reminder: always `regexp.QuoteMeta` the input here.
 const violationMsgFUserCountRegex = `^(?:The number of users with the %s role is at least )(\d+)(?: above the specified limit)$`
 
+// The default IgnoreClusterRoleBindings regex when not specified in the policy.
+const defaultIgnoreCRBs = `^system:.+$`
+
 // Initialize to initialize some controller varaibles
 func Initialize(kClient *kubernetes.Interface, kDynamicClient *dynamic.Interface, mgr manager.Manager, clsName, namespace,
 	eventParent string) (err error) {
@@ -278,7 +281,9 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*policiesv1.IamPolicy) 
 			clusterRoleRef = policy.Spec.ClusterRole
 		}
 
-		clusterLevelUsers, err := checkAllClusterLevel(ClusteRoleBindingList, clusterRoleRef)
+		clusterLevelUsers, err := checkAllClusterLevel(
+			ClusteRoleBindingList, clusterRoleRef, policy.Spec.IgnoreClusterRoleBindings,
+		)
 		queryErrEncountered := false
 		if err != nil {
 			queryErrEncountered = true
@@ -339,32 +344,65 @@ func getGroupMembership(group string) ([]string, error) {
 	return users, nil
 }
 
-func checkAllClusterLevel(clusterRoleBindingList *v1.ClusterRoleBindingList, clusterroleref string) (userV int, err error) {
+func checkAllClusterLevel(
+	clusterRoleBindingList *v1.ClusterRoleBindingList,
+	clusterroleref string,
+	ignoreCRBs []string,
+) (userV int, err error) {
+	if len(ignoreCRBs) == 0 {
+		ignoreCRBs = []string{defaultIgnoreCRBs}
+	}
+
+	compiledIgnoreCRBs := make([]*regexp.Regexp, 0, len(ignoreCRBs))
+	for _, regex := range ignoreCRBs {
+		regex, err := regexp.Compile(regex)
+		if err != nil {
+			err = fmt.Errorf("the ignoreClusterRoleBindings entry of %s is invalid: %w", regex, err)
+			return 0, err
+		}
+
+		compiledIgnoreCRBs = append(compiledIgnoreCRBs, regex)
+	}
 
 	usersMap := make(map[string]bool)
 	for _, clusterRoleBinding := range clusterRoleBindingList.Items {
-		//if not system binding
-		if !strings.HasPrefix(clusterRoleBinding.Name, "system") {
-			//Only consider role bindings with matching referenced cluster role
-			var roleRef = clusterRoleBinding.RoleRef
-			if roleRef.Kind == "ClusterRole" && roleRef.Name == clusterroleref {
-				for _, subject := range clusterRoleBinding.Subjects {
-					if subject.Kind == "User" {
-						usersMap[subject.Name] = true
-					} else if subject.Kind == "Group" {
-						users, err := getGroupMembership(subject.Name)
-						if err != nil {
-							log.Error(err, "The policy compliance will not be able to be fully determined")
-							continue
-						}
+		ignore := false
+		for _, regex := range compiledIgnoreCRBs {
+			if regex.MatchString(clusterRoleBinding.Name) {
+				log.Info(
+					fmt.Sprintf(
+						"The ignoreClusterRoleBinding entry of `%s` matched \"%s\". Skipping.",
+						regex,
+						clusterRoleBinding.Name,
+					),
+				)
+				ignore = true
+				break
+			}
+		}
 
-						for _, user := range users {
-							usersMap[user] = true
-						}
+		if ignore {
+			continue
+		}
+
+		//Only consider role bindings with matching referenced cluster role
+		var roleRef = clusterRoleBinding.RoleRef
+		if roleRef.Kind == "ClusterRole" && roleRef.Name == clusterroleref {
+			for _, subject := range clusterRoleBinding.Subjects {
+				if subject.Kind == "User" {
+					usersMap[subject.Name] = true
+				} else if subject.Kind == "Group" {
+					users, err := getGroupMembership(subject.Name)
+					if err != nil {
+						log.Error(err, "The policy compliance will not be able to be fully determined")
+						continue
+					}
+
+					for _, user := range users {
+						usersMap[user] = true
 					}
 				}
 			}
-
 		}
 	}
 	return len(usersMap), err

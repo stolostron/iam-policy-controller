@@ -32,6 +32,15 @@ spec:
           spec:
             description: IamPolicySpec defines the desired state of IamPolicy
             properties:
+              ignoreClusterRoleBindings:
+                description: >-
+                  A list of regex values signifying which cluster role binding names to ignore.
+                  By default, all cluster role bindings that have a name which starts with system:
+                  will be ignored. It is recommended to set this to a stricter value.
+                type: array
+                items:
+                  type: string
+                  minLength: 1
               labelSelector:
                 additionalProperties:
                   type: string

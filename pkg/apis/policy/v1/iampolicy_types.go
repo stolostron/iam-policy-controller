@@ -45,6 +45,10 @@ type Target struct {
 
 // IamPolicySpec defines the desired state of IamPolicy
 type IamPolicySpec struct {
+	// A list of regex values signifying which cluster role binding names to ignore.
+	// By default, all cluster role bindings that have a name which starts with system:
+	// will be ignored. It is recommended to set this to a stricter value.
+	IgnoreClusterRoleBindings []string `json:"ignoreClusterRoleBindings,omitempty"`
 	// enforce, inform
 	RemediationAction RemediationAction `json:"remediationAction,omitempty"`
 	// Selecting a list of namespaces where the policy applies

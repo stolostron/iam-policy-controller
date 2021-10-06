@@ -10,6 +10,7 @@ package iampolicy
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -225,39 +226,144 @@ func TestCheckAllClusterLevel(t *testing.T) {
 	s := scheme.Scheme
 	s.AddKnownTypes(groupGV, &group{})
 	groupObj := group{ObjectMeta: metav1.ObjectMeta{Name: "admins"}, Users: []string{"tom.hanks"}}
-	var client dynamic.Interface = testdynamicclient.NewSimpleDynamicClient(s, &groupObj)
-	KubeDynamicClient = &client
 
-	var userSubject = sub.Subject{
-		APIGroup:  "",
-		Kind:      "User",
-		Name:      "user1",
-		Namespace: "default",
-	}
-	var groupSubject = sub.Subject{
-		APIGroup:  "",
-		Kind:      "Group",
-		Name:      "admins",
-		Namespace: "default",
-	}
-
-	var clusterRoleBinding = sub.ClusterRoleBinding{
-		Subjects: []sub.Subject{userSubject, groupSubject},
-		RoleRef: sub.RoleRef{
-			Kind: "ClusterRole",
-			Name: "cluster-admin",
+	tests := []struct {
+		additionalCRB *sub.ClusterRoleBinding
+		ignoreCRBs    []string
+		expected      int
+	}{
+		// This should be two since there is one subject that is a user and one
+		// subject that is a group with a single user.
+		{nil, []string{}, 2},
+		// This should be two since this is the same as the first test except
+		// an additional CRB is ignored with the default regex.
+		{
+			&sub.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "system:sw",
+				},
+				Subjects: []sub.Subject{
+					{APIGroup: "", Kind: "User", Name: "han.solo", Namespace: "default"},
+				},
+				RoleRef: sub.RoleRef{
+					Kind: "ClusterRole",
+					Name: "cluster-admin",
+				},
+			},
+			[]string{},
+			2,
+		},
+		// This should be two since this is the same as the first test except
+		// an additional CRB is ignored with the specified regex.
+		{
+			&sub.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "tom-hanks",
+				},
+				Subjects: []sub.Subject{
+					{APIGroup: "", Kind: "User", Name: "tom-hanks", Namespace: "default"},
+				},
+				RoleRef: sub.RoleRef{
+					Kind: "ClusterRole",
+					Name: "cluster-admin",
+				},
+			},
+			[]string{"^tom.*"},
+			2,
+		},
+		// This should be three since this is the same as the first test except
+		// an additional CRB is not ignored with the specified regex.
+		{
+			&sub.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sw",
+				},
+				Subjects: []sub.Subject{
+					{APIGroup: "", Kind: "User", Name: "han-solo", Namespace: "default"},
+				},
+				RoleRef: sub.RoleRef{
+					Kind: "ClusterRole",
+					Name: "cluster-admin",
+				},
+			},
+			[]string{"^jabba.*"},
+			3,
+		},
+		// This should be three since an additional CRB is added but the match
+		// nothing regex is provided.
+		{
+			&sub.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "system:sw",
+				},
+				Subjects: []sub.Subject{
+					{APIGroup: "", Kind: "User", Name: "han.solo", Namespace: "default"},
+				},
+				RoleRef: sub.RoleRef{
+					Kind: "ClusterRole",
+					Name: "cluster-admin",
+				},
+			},
+			[]string{".^"},
+			3,
 		},
 	}
-	var items = []sub.ClusterRoleBinding{}
-	items = append(items, clusterRoleBinding)
-	var clusterRoleBindingList = sub.ClusterRoleBindingList{
-		Items: items,
+
+	for _, test := range tests {
+		test := test
+		var crbName string
+		if test.additionalCRB != nil {
+			crbName = test.additionalCRB.Name
+		}
+		testName := fmt.Sprintf(
+			"crb=%s, ignoreCRBs=%v, expected=%d", crbName, test.ignoreCRBs, test.expected,
+		)
+		t.Run(
+			testName,
+			func(t *testing.T) {
+
+				var client dynamic.Interface = testdynamicclient.NewSimpleDynamicClient(
+					s, &groupObj,
+				)
+				KubeDynamicClient = &client
+
+				var userSubject = sub.Subject{
+					APIGroup:  "",
+					Kind:      "User",
+					Name:      "user1",
+					Namespace: "default",
+				}
+				var groupSubject = sub.Subject{
+					APIGroup:  "",
+					Kind:      "Group",
+					Name:      "admins",
+					Namespace: "default",
+				}
+
+				var clusterRoleBinding = sub.ClusterRoleBinding{
+					Subjects: []sub.Subject{userSubject, groupSubject},
+					RoleRef: sub.RoleRef{
+						Kind: "ClusterRole",
+						Name: "cluster-admin",
+					},
+				}
+				var items = []sub.ClusterRoleBinding{clusterRoleBinding}
+				if test.additionalCRB != nil {
+					items = append(items, *test.additionalCRB)
+				}
+				var clusterRoleBindingList = sub.ClusterRoleBindingList{
+					Items: items,
+				}
+
+				users, err := checkAllClusterLevel(
+					&clusterRoleBindingList, "cluster-admin", test.ignoreCRBs,
+				)
+
+				assert.Nil(t, err)
+				assert.Equal(t, test.expected, users)
+			},
+		)
 	}
-	users, err := checkAllClusterLevel(&clusterRoleBindingList, "cluster-admin")
-	// This should be two since there is one subject that is a user and one
-	// subject that is a group with a single user
-	assert.Nil(t, err)
-	assert.Equal(t, 2, users)
 }
 
 func TestPrintMap(t *testing.T) {

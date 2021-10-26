@@ -18,6 +18,8 @@ endif
 GOARCH = $(shell go env GOARCH)
 GOOS = $(shell go env GOOS)
 
+OPERATOR_SDK_PATH ?= $(shell which operator-sdk)
+
 # Handle KinD configuration
 KIND_NAME ?= test-managed
 KIND_NAMESPACE ?= open-cluster-management-agent-addon
@@ -85,7 +87,7 @@ build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./build/_output/bin/iam-policy-controller ./cmd/manager
 
 build-images:
-	@docker build -t ${IMAGE_NAME_AND_VERSION} -f ./Dockerfile .
+	@docker build -t ${IMAGE_NAME_AND_VERSION} -f ./build/Dockerfile .
 	@docker tag ${IMAGE_NAME_AND_VERSION} $(REGISTRY)/$(IMG):$(TAG)
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
@@ -94,7 +96,7 @@ run: generate fmt vet
 
 # Install CRDs into a cluster
 install: manifests
-	kubectl apply -f config/crds
+	kubectl apply -f deploy/crds
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy:
@@ -106,9 +108,13 @@ create-ns:
 	@kubectl create namespace $(CONTROLLER_NAMESPACE) || true
 	@kubectl create namespace $(WATCH_NAMESPACE) || true
 
-# Generate manifests e.g. CRD, RBAC etc.
+# Generate v1beta1 and v1 CRD manifests. The RBAC generation will be handled after upgrading operator-sdk:
+# https://github.com/operator-framework/operator-sdk/issues/1226
 manifests:
-	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+	${OPERATOR_SDK_PATH} generate crds
+	cp ./deploy/crds/policy.open-cluster-management.io_iampolicies_crd.yaml ./deploy/crds/v1/policy.open-cluster-management.io_iampolicies.yaml
+	${OPERATOR_SDK_PATH} generate crds --crd-version="v1beta1"
+	rm -f ./deploy/crds/policy.open-cluster-management.io_policies_crd.yaml
 
 # Run go fmt against code
 fmt:
@@ -119,8 +125,16 @@ vet:
 	go vet ./pkg/... ./cmd/...
 
 # Generate code
-generate:
-	go generate ./pkg/... ./cmd/...
+generate: operator-sdk
+	GOROOT=$(shell go env GOROOT) ${OPERATOR_SDK_PATH} generate k8s
+
+.PHONY: operator-sdk
+operator-sdk:
+	@echo Checking if the operator-sdk v0.19.4 is installed
+	@if [ "$(shell ${OPERATOR_SDK_PATH} version | cut -d "\"" -f 2 -z)" != "v0.19.4" ]; then\
+		echo "The operator-sdk version must be v0.19.4" > /dev/stderr;\
+		exit 1;\
+	fi
 
 # e2e test section
 .PHONY: kind-bootstrap-cluster

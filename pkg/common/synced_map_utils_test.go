@@ -26,7 +26,7 @@ import (
 			namespaces:
 				include: ["default"]
 				exclude: ["kube*"]
-			remediationAction: enforce # or inform
+			remediationAction: Inform
 			conditions:
 				ownership: [ReplicaSet, Deployment, DeamonSet, ReplicationController]
 */
@@ -36,10 +36,10 @@ var plc = &policiesv1.IamPolicy{
 		Namespace: "default",
 	},
 	Spec: policiesv1.IamPolicySpec{
-		RemediationAction: policiesv1.Enforce,
+		RemediationAction: policiesv1.Inform,
 		NamespaceSelector: policiesv1.Target{
-			Include: []string{"default"},
-			Exclude: []string{"kube*"},
+			Include: []policiesv1.NonEmptyString{"default"},
+			Exclude: []policiesv1.NonEmptyString{"kube*"},
 		},
 	},
 }

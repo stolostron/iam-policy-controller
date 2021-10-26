@@ -1,11 +1,6 @@
-
----
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.5.0
-  creationTimestamp: null
   name: iampolicies.policy.open-cluster-management.io
 spec:
   group: policy.open-cluster-management.io
@@ -22,50 +17,60 @@ spec:
         description: IamPolicy is the Schema for the iampolicies API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
           spec:
             description: IamPolicySpec defines the desired state of IamPolicy
             properties:
+              clusterRole:
+                description: Name of the cluster role  refefenced by the cluster role
+                  bindings,  defaults to "cluster-admin" if none specified
+                type: string
               ignoreClusterRoleBindings:
-                description: >-
-                  A list of regex values signifying which cluster role binding names to ignore.
-                  By default, all cluster role bindings that have a name which starts with system:
-                  will be ignored. It is recommended to set this to a stricter value.
-                type: array
+                description: 'A list of regex values signifying which cluster role
+                  binding names to ignore. By default, all cluster role bindings that
+                  have a name which starts with system: will be ignored. It is recommended
+                  to set this to a stricter value.'
                 items:
-                  type: string
                   minLength: 1
+                  type: string
+                type: array
               labelSelector:
                 additionalProperties:
                   type: string
                 type: object
               maxClusterRoleBindingUsers:
-                description: Maximum number of cluster role binding users still valid before it is considered non-compliant
+                description: Maximum number of cluster role binding users still valid
+                  before it is considered non-compliant
                 type: integer
-              clusterRole:
-                description: Cluster Role referenced by the  cluster role bindings,
-                  if not specified defaults to cluster-admin
-                type: string
               namespaceSelector:
                 description: Selecting a list of namespaces where the policy applies
                 properties:
                   exclude:
                     items:
+                      minLength: 1
                       type: string
                     type: array
                   include:
                     items:
+                      minLength: 1
                       type: string
                     type: array
                 type: object
               remediationAction:
                 description: enforce, inform
+                enum:
+                - Inform
+                - inform
                 type: string
               severity:
                 description: low, medium, or high
@@ -75,17 +80,13 @@ spec:
             description: IamPolicyStatus defines the observed state of IamPolicy
             properties:
               compliancyDetails:
-                description: Compliancy  details
-                type: object
                 additionalProperties:
-                  description: per policies
-                  type: object
                   additionalProperties:
-                    description: per namespace
-                    type: array
                     items:
-                      description: list of violation msgs
                       type: string
+                    type: array
+                  type: object
+                type: object
               compliant:
                 description: ComplianceState shows the state of enforcement
                 type: string
@@ -95,9 +96,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []

@@ -59,6 +59,7 @@ type IamPolicySpec struct {
 	NamespaceSelector Target            `json:"namespaceSelector,omitempty"`
 	LabelSelector     map[string]string `json:"labelSelector,omitempty"`
 	// Maximum number of cluster role binding users still valid before it is considered non-compliant
+	// +kubebuilder:validation:Minimum=1
 	MaxClusterRoleBindingUsers int `json:"maxClusterRoleBindingUsers,omitempty"`
 	// Name of the cluster role  refefenced by the cluster role bindings,  defaults to "cluster-admin" if none specified
 	ClusterRole string `json:"clusterRole,omitempty"`

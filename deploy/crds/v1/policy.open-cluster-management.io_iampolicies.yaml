@@ -34,6 +34,7 @@ spec:
               clusterRole:
                 description: Name of the cluster role  refefenced by the cluster role
                   bindings,  defaults to "cluster-admin" if none specified
+                minLength: 1
                 type: string
               ignoreClusterRoleBindings:
                 description: 'A list of regex values signifying which cluster role

@@ -347,15 +347,15 @@ func getGroupMembership(group string) ([]string, error) {
 func checkAllClusterLevel(
 	clusterRoleBindingList *v1.ClusterRoleBindingList,
 	clusterroleref string,
-	ignoreCRBs []string,
+	ignoreCRBs []policiesv1.NonEmptyString,
 ) (userV int, err error) {
 	if len(ignoreCRBs) == 0 {
-		ignoreCRBs = []string{defaultIgnoreCRBs}
+		ignoreCRBs = []policiesv1.NonEmptyString{defaultIgnoreCRBs}
 	}
 
 	compiledIgnoreCRBs := make([]*regexp.Regexp, 0, len(ignoreCRBs))
 	for _, regex := range ignoreCRBs {
-		regex, err := regexp.Compile(regex)
+		regex, err := regexp.Compile(string(regex))
 		if err != nil {
 			err = fmt.Errorf("the ignoreClusterRoleBindings entry of %s is invalid: %w", regex, err)
 			return 0, err

@@ -135,7 +135,7 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 		t.Fatalf("reconcile: (%v)", err)
 	}
 	t.Log(res)
-	var target = []string{"default"}
+	var target = []policiesv1.NonEmptyString{"default"}
 	iamPolicy.Spec.NamespaceSelector.Include = target
 	handleAddingPolicy(&iamPolicy)
 	exitExecLoop = "true"
@@ -229,12 +229,12 @@ func TestCheckAllClusterLevel(t *testing.T) {
 
 	tests := []struct {
 		additionalCRB *sub.ClusterRoleBinding
-		ignoreCRBs    []string
+		ignoreCRBs    []policiesv1.NonEmptyString
 		expected      int
 	}{
 		// This should be two since there is one subject that is a user and one
 		// subject that is a group with a single user.
-		{nil, []string{}, 2},
+		{nil, []policiesv1.NonEmptyString{}, 2},
 		// This should be two since this is the same as the first test except
 		// an additional CRB is ignored with the default regex.
 		{
@@ -250,7 +250,7 @@ func TestCheckAllClusterLevel(t *testing.T) {
 					Name: "cluster-admin",
 				},
 			},
-			[]string{},
+			[]policiesv1.NonEmptyString{},
 			2,
 		},
 		// This should be two since this is the same as the first test except
@@ -268,7 +268,7 @@ func TestCheckAllClusterLevel(t *testing.T) {
 					Name: "cluster-admin",
 				},
 			},
-			[]string{"^tom.*"},
+			[]policiesv1.NonEmptyString{"^tom.*"},
 			2,
 		},
 		// This should be three since this is the same as the first test except
@@ -286,7 +286,7 @@ func TestCheckAllClusterLevel(t *testing.T) {
 					Name: "cluster-admin",
 				},
 			},
-			[]string{"^jabba.*"},
+			[]policiesv1.NonEmptyString{"^jabba.*"},
 			3,
 		},
 		// This should be three since an additional CRB is added but the match
@@ -304,7 +304,7 @@ func TestCheckAllClusterLevel(t *testing.T) {
 					Name: "cluster-admin",
 				},
 			},
-			[]string{".^"},
+			[]policiesv1.NonEmptyString{".^"},
 			3,
 		},
 	}

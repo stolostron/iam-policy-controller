@@ -41,6 +41,7 @@ spec:
                   have a name which starts with system: will be ignored. It is recommended
                   to set this to a stricter value.'
                 items:
+                  minLength: 1
                   type: string
                 type: array
               labelSelector:
@@ -56,15 +57,20 @@ spec:
                 properties:
                   exclude:
                     items:
+                      minLength: 1
                       type: string
                     type: array
                   include:
                     items:
+                      minLength: 1
                       type: string
                     type: array
                 type: object
               remediationAction:
                 description: enforce, inform
+                enum:
+                - Inform
+                - inform
                 type: string
               severity:
                 description: low, medium, or high

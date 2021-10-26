@@ -104,7 +104,7 @@ func (in *IamPolicySpec) DeepCopyInto(out *IamPolicySpec) {
 	*out = *in
 	if in.IgnoreClusterRoleBindings != nil {
 		in, out := &in.IgnoreClusterRoleBindings, &out.IgnoreClusterRoleBindings
-		*out = make([]string, len(*in))
+		*out = make([]NonEmptyString, len(*in))
 		copy(*out, *in)
 	}
 	in.NamespaceSelector.DeepCopyInto(&out.NamespaceSelector)
@@ -233,12 +233,12 @@ func (in *Target) DeepCopyInto(out *Target) {
 	*out = *in
 	if in.Include != nil {
 		in, out := &in.Include, &out.Include
-		*out = make([]string, len(*in))
+		*out = make([]NonEmptyString, len(*in))
 		copy(*out, *in)
 	}
 	if in.Exclude != nil {
 		in, out := &in.Exclude, &out.Exclude
-		*out = make([]string, len(*in))
+		*out = make([]NonEmptyString, len(*in))
 		copy(*out, *in)
 	}
 	return

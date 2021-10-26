@@ -12,13 +12,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// A custom type is required since there is no way to have a kubebuilder marker
+// apply to the items of a slice.
+
+// +kubebuilder:validation:MinLength=1
+type NonEmptyString string
+
 /// RemediationAction : enforce or inform
+// +kubebuilder:validation:Enum=Inform;inform
 type RemediationAction string
 
 const (
-	// Enforce is an remediationAction to make changes
-	Enforce RemediationAction = "Enforce"
-
 	// Inform is an remediationAction to only inform
 	Inform RemediationAction = "Inform"
 )
@@ -39,8 +43,8 @@ const (
 
 // Target defines the list of namespaces to include/exclude
 type Target struct {
-	Include []string `json:"include,omitempty"`
-	Exclude []string `json:"exclude,omitempty"`
+	Include []NonEmptyString `json:"include,omitempty"`
+	Exclude []NonEmptyString `json:"exclude,omitempty"`
 }
 
 // IamPolicySpec defines the desired state of IamPolicy
@@ -48,7 +52,7 @@ type IamPolicySpec struct {
 	// A list of regex values signifying which cluster role binding names to ignore.
 	// By default, all cluster role bindings that have a name which starts with system:
 	// will be ignored. It is recommended to set this to a stricter value.
-	IgnoreClusterRoleBindings []string `json:"ignoreClusterRoleBindings,omitempty"`
+	IgnoreClusterRoleBindings []NonEmptyString `json:"ignoreClusterRoleBindings,omitempty"`
 	// enforce, inform
 	RemediationAction RemediationAction `json:"remediationAction,omitempty"`
 	// Selecting a list of namespaces where the policy applies

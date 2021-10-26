@@ -20,7 +20,7 @@ apiVersion: policy.open-cluster-management.io/v1
 kind: IamPolicy
 metadata:
   name: iam-grc-policy
-  label:
+  labels:
     category: "System-Integrity"
 spec:
   # Include are the namespaces for which you want to watch cluster administrator role and IAM rolebinings, while exclude are the namespaces you explicitly do not want to watch

@@ -51,6 +51,7 @@ spec:
             maxClusterRoleBindingUsers:
               description: Maximum number of cluster role binding users still valid
                 before it is considered non-compliant
+              minimum: 1
               type: integer
             namespaceSelector:
               description: Selecting a list of namespaces where the policy applies

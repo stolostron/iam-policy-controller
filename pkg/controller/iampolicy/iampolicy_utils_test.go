@@ -27,7 +27,7 @@ func TestConvertPolicyStatusToString(t *testing.T) {
 		},
 	}
 	var compliantDetail = map[string][]string{}
-	var compliantDetails = map[string]map[string][]string{}
+	var compliantDetails = map[string]policiesv1.CompliancyDetail{}
 	details := []string{}
 
 	details = append(details, "detail1", "detail2")

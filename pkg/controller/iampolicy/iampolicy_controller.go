@@ -419,7 +419,7 @@ func convertMaptoPolicyNameKey() map[string]*policiesv1.IamPolicy {
 func addViolationCount(plc *policiesv1.IamPolicy, roleName string, userCount int, namespace string) (changed bool) {
 	msg := fmt.Sprintf(violationMsgF, roleName, fmt.Sprint(userCount))
 	if plc.Status.CompliancyDetails == nil {
-		plc.Status.CompliancyDetails = make(map[string]map[string][]string)
+		plc.Status.CompliancyDetails = make(map[string]policiesv1.CompliancyDetail)
 	}
 	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
 		plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)

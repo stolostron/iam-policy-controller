@@ -63,10 +63,12 @@ type IamPolicySpec struct {
 	Severity string `json:"severity,omitempty"`
 }
 
+type CompliancyDetail map[string][]string
+
 // IamPolicyStatus defines the observed state of IamPolicy
 type IamPolicyStatus struct {
-	ComplianceState   ComplianceState                `json:"compliant,omitempty"`         // Compliant, NonCompliant, UnkownCompliancy
-	CompliancyDetails map[string]map[string][]string `json:"compliancyDetails,omitempty"` // reason for non-compliancy
+	ComplianceState   ComplianceState             `json:"compliant,omitempty"`         // Compliant, NonCompliant, UnknownCompliancy
+	CompliancyDetails map[string]CompliancyDetail `json:"compliancyDetails,omitempty"` // reason for non-compliancy
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

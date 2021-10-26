@@ -434,7 +434,7 @@ func TestGetContainerID(t *testing.T) {
 func TestAddViolationCount(t *testing.T) {
 
 	tests := []struct {
-		compliancyDetails map[string]map[string][]string
+		compliancyDetails map[string]policiesv1.CompliancyDetail
 		userCount         int
 		roleName          string
 		expectedMsg       string
@@ -448,7 +448,7 @@ func TestAddViolationCount(t *testing.T) {
 			true,
 		},
 		{
-			map[string]map[string][]string{},
+			map[string]policiesv1.CompliancyDetail{},
 			5,
 			"cluster-admin",
 			"The number of users with the cluster-admin role is at least 5 above the specified limit",
@@ -469,21 +469,21 @@ func TestAddViolationCount(t *testing.T) {
 			true,
 		},
 		{
-			map[string]map[string][]string{"foo": {}},
+			map[string]policiesv1.CompliancyDetail{"foo": {}},
 			5,
 			"cluster-admin",
 			"The number of users with the cluster-admin role is at least 5 above the specified limit",
 			true,
 		},
 		{
-			map[string]map[string][]string{"foo": {"cluster-wide": {}}},
+			map[string]policiesv1.CompliancyDetail{"foo": {"cluster-wide": {}}},
 			5,
 			"cluster-admin",
 			"The number of users with the cluster-admin role is at least 5 above the specified limit",
 			true,
 		},
 		{
-			map[string]map[string][]string{"foo": {"cluster-wide": {"The number of users with the cluster-admin role is at least 5 above the specified limit"}}},
+			map[string]policiesv1.CompliancyDetail{"foo": {"cluster-wide": {"The number of users with the cluster-admin role is at least 5 above the specified limit"}}},
 			5,
 			"cluster-admin",
 			"The number of users with the cluster-admin role is at least 5 above the specified limit",

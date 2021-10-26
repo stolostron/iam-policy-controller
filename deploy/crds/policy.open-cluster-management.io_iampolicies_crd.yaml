@@ -31,15 +31,18 @@ spec:
         spec:
           description: IamPolicySpec defines the desired state of IamPolicy
           properties:
+            clusterRole:
+              description: Name of the cluster role  refefenced by the cluster role
+                bindings,  defaults to "cluster-admin" if none specified
+              type: string
             ignoreClusterRoleBindings:
-              description: >-
-                A list of regex values signifying which cluster role binding names to ignore.
-                By default, all cluster role bindings that have a name which starts with system:
-                will be ignored. It is recommended to set this to a stricter value.
-              type: array
+              description: 'A list of regex values signifying which cluster role binding
+                names to ignore. By default, all cluster role bindings that have a
+                name which starts with system: will be ignored. It is recommended
+                to set this to a stricter value.'
               items:
                 type: string
-                minLength: 1
+              type: array
             labelSelector:
               additionalProperties:
                 type: string
@@ -48,10 +51,6 @@ spec:
               description: Maximum number of cluster role binding users still valid
                 before it is considered non-compliant
               type: integer
-            clusterRole:
-              description: Cluster Role referenced by the  cluster role bindings,
-                if not specified defaults to cluster-admin
-              type: string
             namespaceSelector:
               description: Selecting a list of namespaces where the policy applies
               properties:
@@ -75,7 +74,12 @@ spec:
           description: IamPolicyStatus defines the observed state of IamPolicy
           properties:
             compliancyDetails:
-              description: Compliant, NonCompliant, UnkownCompliancy
+              additionalProperties:
+                additionalProperties:
+                  items:
+                    type: string
+                  type: array
+                type: object
               type: object
             compliant:
               description: ComplianceState shows the state of enforcement

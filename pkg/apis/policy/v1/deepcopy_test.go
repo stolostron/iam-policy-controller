@@ -126,7 +126,7 @@ func TestIamPolicyListDeepCopyInto(t *testing.T) {
 
 func TestIamPolicyStatusDeepCopy(t *testing.T) {
 	var compliantDetail = map[string][]string{}
-	var compliantDetails = map[string]map[string][]string{}
+	var compliantDetails = map[string]CompliancyDetail{}
 	details := []string{}
 
 	details = append(details, "detail1", "detail2")
@@ -145,7 +145,7 @@ func TestIamPolicyStatusDeepCopy(t *testing.T) {
 
 func TestIamPolicyStatusDeepCopyInto(t *testing.T) {
 	var compliantDetail = map[string][]string{}
-	var compliantDetails = map[string]map[string][]string{}
+	var compliantDetails = map[string]CompliancyDetail{}
 	details := []string{}
 
 	details = append(details, "detail1", "detail2")

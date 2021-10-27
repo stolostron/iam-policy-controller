@@ -32,8 +32,8 @@ spec:
             description: IamPolicySpec defines the desired state of IamPolicy
             properties:
               clusterRole:
-                description: Name of the cluster role  refefenced by the cluster role
-                  bindings,  defaults to "cluster-admin" if none specified
+                description: Name of the cluster role referenced by the cluster role
+                  bindings, defaults to "cluster-admin" if none specified
                 minLength: 1
                 type: string
               ignoreClusterRoleBindings:

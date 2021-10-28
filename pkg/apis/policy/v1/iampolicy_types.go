@@ -55,7 +55,8 @@ type IamPolicySpec struct {
 	IgnoreClusterRoleBindings []NonEmptyString `json:"ignoreClusterRoleBindings,omitempty"`
 	// enforce, inform
 	RemediationAction RemediationAction `json:"remediationAction,omitempty"`
-	// Selecting a list of namespaces where the policy applies
+	// Selecting a list of namespaces where the policy applies. This field is obsolete and does not
+	// do anything.
 	NamespaceSelector Target            `json:"namespaceSelector,omitempty"`
 	LabelSelector     map[string]string `json:"labelSelector,omitempty"`
 	// Maximum number of cluster role binding users still valid before it is considered non-compliant

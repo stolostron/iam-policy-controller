@@ -24,7 +24,7 @@ OPERATOR_SDK_PATH ?= $(shell which operator-sdk)
 KIND_NAME ?= test-managed
 KIND_NAMESPACE ?= open-cluster-management-agent-addon
 KIND_VERSION ?= latest
-KBVERSION := 2.0.0-alpha.1
+KBVERSION := 2.3.1
 MANAGED_CLUSTER_NAME ?= managed
 WATCH_NAMESPACE ?= $(MANAGED_CLUSTER_NAME)
 ifneq ($(KIND_VERSION), latest)
@@ -84,15 +84,15 @@ dependencies-go:
 	go mod download
 
 build:
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./build/_output/bin/iam-policy-controller ./cmd/manager
+	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./build/_output/bin/iam-policy-controller ./
 
 build-images:
-	@docker build -t ${IMAGE_NAME_AND_VERSION} -f ./build/Dockerfile .
+	@docker build -t ${IMAGE_NAME_AND_VERSION} .
 	@docker tag ${IMAGE_NAME_AND_VERSION} $(REGISTRY)/$(IMG):$(TAG)
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
-	go run ./cmd/manager/main.go
+	go run ./main.go
 
 # Install CRDs into a cluster
 install: manifests
@@ -108,33 +108,13 @@ create-ns:
 	@kubectl create namespace $(CONTROLLER_NAMESPACE) || true
 	@kubectl create namespace $(WATCH_NAMESPACE) || true
 
-# Generate v1beta1 and v1 CRD manifests. The RBAC generation will be handled after upgrading operator-sdk:
-# https://github.com/operator-framework/operator-sdk/issues/1226
-manifests:
-	${OPERATOR_SDK_PATH} generate crds
-	cp ./deploy/crds/policy.open-cluster-management.io_iampolicies_crd.yaml ./deploy/crds/v1/policy.open-cluster-management.io_iampolicies.yaml
-	${OPERATOR_SDK_PATH} generate crds --crd-version="v1beta1"
-	rm -f ./deploy/crds/policy.open-cluster-management.io_policies_crd.yaml
-
 # Run go fmt against code
 fmt:
-	go fmt ./pkg/... ./cmd/...
+	go fmt ./...
 
 # Run go vet against code
 vet:
-	go vet ./pkg/... ./cmd/...
-
-# Generate code
-generate: operator-sdk
-	GOROOT=$(shell go env GOROOT) ${OPERATOR_SDK_PATH} generate k8s
-
-.PHONY: operator-sdk
-operator-sdk:
-	@echo Checking if the operator-sdk v0.19.4 is installed
-	@if [ "$(shell ${OPERATOR_SDK_PATH} version | cut -d "\"" -f 2 -z)" != "v0.19.4" ]; then\
-		echo "The operator-sdk version must be v0.19.4" > /dev/stderr;\
-		exit 1;\
-	fi
+	go vet ./...
 
 # e2e test section
 .PHONY: kind-bootstrap-cluster
@@ -151,15 +131,17 @@ kind-deploy-controller: install-crds
 
 deploy-controller: kind-deploy-controller
 
+# Don't use the --enable-lease flag which is on by default in the Deployment defintion in the
+# deploy/operator.yaml file.
 kind-deploy-controller-dev:
 	@echo Pushing image to KinD cluster
 	kind load docker-image $(REGISTRY)/$(IMG):$(TAG) --name $(KIND_NAME)
 	@echo Installing $(IMG)
 	kubectl create ns $(KIND_NAMESPACE)
-	kubectl apply -f deploy/ -n $(KIND_NAMESPACE)
+	kubectl apply -f deploy/operator.yaml -n $(KIND_NAMESPACE)
 	@echo "Patch deployment image"
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"imagePullPolicy\":\"Never\"}]}}}}"
-	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"image\":\"$(REGISTRY)/$(IMG):$(TAG)\"}]}}}}"
+	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"image\":\"$(REGISTRY)/$(IMG):$(TAG)\",\"args\":[]}]}}}}"
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"env\":[{\"name\":\"WATCH_NAMESPACE\",\"value\":\"$(WATCH_NAMESPACE)\"}]}]}}}}"
 	kubectl rollout status -n $(KIND_NAMESPACE) deployment $(IMG) --timeout=180s
 
@@ -173,7 +155,7 @@ kind-delete-cluster:
 
 install-crds:
 	@echo installing crds
-	kubectl apply -f deploy/crds/v1/policy.open-cluster-management.io_iampolicies.yaml
+	kubectl apply -f deploy/crds/policy.open-cluster-management.io_iampolicies.yaml
 
 install-resources:
 	@echo creating namespaces
@@ -193,3 +175,42 @@ e2e-debug:
 	kubectl get iampolicies.policy.open-cluster-management.io --all-namespaces
 	kubectl describe pods -n $(KIND_NAMESPACE)
 	kubectl logs $$(kubectl get pods -n $(KIND_NAMESPACE) -o name | grep $(IMG)) -n $(KIND_NAMESPACE)
+
+############################################################
+# Generate manifests
+############################################################
+CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+KUSTOMIZE = $(shell pwd)/bin/kustomize
+CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
+
+.PHONY: manifests
+manifests: controller-gen
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=iam-policy-controller paths="./..." output:crd:artifacts:config=deploy/crds output:rbac:artifacts:config=deploy/rbac
+
+.PHONY: generate
+generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: generate-operator-yaml
+generate-operator-yaml: kustomize manifests
+	$(KUSTOMIZE) build deploy/manager > deploy/operator.yaml
+
+.PHONY: controller-gen
+controller-gen: ## Download controller-gen locally if necessary.
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1)
+
+.PHONY: kustomize
+kustomize: ## Download kustomize locally if necessary.
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
+
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+go mod init tmp ;\
+echo "Downloading $(2)" ;\
+GOBIN=$(PWD)/bin go get $(2) ;\
+rm -rf $$TMP_DIR ;\
+}
+endef

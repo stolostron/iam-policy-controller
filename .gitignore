@@ -11,3 +11,5 @@ kubeconfig_managed
 .vscode/launch.json
 cover.out
 coverage.out
+
+bin/

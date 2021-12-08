@@ -698,8 +698,6 @@ github.com/onsi/gomega v1.10.1/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1y
 github.com/onsi/gomega v1.10.2/go.mod h1:iN09h71vgCQne3DLsj+A5owkum+a2tYe+TOCB1ybHNo=
 github.com/onsi/gomega v1.11.0 h1:+CqWgvj0OZycCaqclBD1pxKHAU+tOkHmQIWvDHq2aug=
 github.com/onsi/gomega v1.11.0/go.mod h1:azGKhqFUon9Vuj0YmTfLSmx0FUwqXYSTl5re8lQLTUg=
-github.com/open-cluster-management/addon-framework v0.0.0-20210415135036-d591b71789d6 h1:1EDnUMwYTmL/JJYf2b0ocmxshhk+yoG5cbZSzV0YPTE=
-github.com/open-cluster-management/addon-framework v0.0.0-20210415135036-d591b71789d6/go.mod h1:qn6zmB/Npxr2OxM0nmGYs2rdvmwV6n3WCXc6JTOx/bQ=
 github.com/open-cluster-management/addon-framework v0.0.0-20210621074027-a81f712c10c2 h1:oHFveB+YtcfOF6zSTkGjgSWEHHkQUkwit7enNj5RRsI=
 github.com/open-cluster-management/addon-framework v0.0.0-20210621074027-a81f712c10c2/go.mod h1:mcpd6pc0j/L+WLFwV2MXHVMr+86ri2iUdTK2M8RHJ7U=
 github.com/open-cluster-management/api v0.0.0-20210409125704-06f2aec1a73f h1:s6z3k0jV0ccoYDPJWMSqVNevO1UoQLYb8f7dYFALSNk=

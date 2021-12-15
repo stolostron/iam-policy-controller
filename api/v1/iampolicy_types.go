@@ -74,8 +74,10 @@ type CompliancyDetail map[string][]string
 
 // IamPolicyStatus defines the observed state of IamPolicy
 type IamPolicyStatus struct {
-	ComplianceState   ComplianceState             `json:"compliant,omitempty"`         // Compliant, NonCompliant, UnknownCompliancy
-	CompliancyDetails map[string]CompliancyDetail `json:"compliancyDetails,omitempty"` // reason for non-compliancy
+	// Compliant, NonCompliant, UnknownCompliancy
+	ComplianceState ComplianceState `json:"compliant,omitempty"`
+	// reason for non-compliancy
+	CompliancyDetails map[string]CompliancyDetail `json:"compliancyDetails,omitempty"`
 }
 
 //+kubebuilder:object:root=true

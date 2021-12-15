@@ -14,50 +14,49 @@ import (
 	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
 )
 
-//SyncedPolicyMap a thread safe map
+// SyncedPolicyMap a thread safe map
 type SyncedPolicyMap struct {
 	PolicyMap map[string]*iampolicyv1.IamPolicy
-	//Mx for making the map thread safe
+	// Mx for making the map thread safe
 	Mx sync.RWMutex
 }
 
-//GetObject used for fetching objects from the synced map
+// GetObject used for fetching objects from the synced map
 func (spm *SyncedPolicyMap) GetObject(key string) (value *iampolicyv1.IamPolicy, found bool) {
-
 	spm.Mx.Lock()
 	defer spm.Mx.Unlock()
-	//check if the map is initialized, if not initilize it
+	// check if the map is initialized, if not initilize it
 	if spm.PolicyMap == nil {
 		return nil, false
 	}
+
 	if val, ok := spm.PolicyMap[key]; ok {
 		return val, true
 	}
+
 	return nil, false
 }
 
 // AddObject safely add to map
 func (spm *SyncedPolicyMap) AddObject(key string, plc *iampolicyv1.IamPolicy) {
-
 	spm.Mx.Lock()
 	defer spm.Mx.Unlock()
-	//check if the map is initialized, if not initilize it
+	// check if the map is initialized, if not initilize it
 	if spm.PolicyMap == nil {
 		spm.PolicyMap = make(map[string]*iampolicyv1.IamPolicy)
 	}
+
 	spm.PolicyMap[key] = plc
 }
 
 // RemoveObject safely remove from map
 func (spm *SyncedPolicyMap) RemoveObject(key string) {
-
 	spm.Mx.Lock()
 	defer spm.Mx.Unlock()
-	//check if the map is initialized, if not return
+	// check if the map is initialized, if not return
 	if spm.PolicyMap == nil {
 		return
 	}
-	if _, ok := spm.PolicyMap[key]; ok {
-		delete(spm.PolicyMap, key)
-	}
+
+	delete(spm.PolicyMap, key)
 }

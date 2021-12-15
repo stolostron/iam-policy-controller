@@ -25,15 +25,11 @@ import (
 	testclient "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
 	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
 )
-
-var mgr manager.Manager
-var err error
 
 var iamPolicy = iampolicyv1.IamPolicy{
 	ObjectMeta: metav1.ObjectMeta{
@@ -52,6 +48,7 @@ func TestReconcile(t *testing.T) {
 		name      = "foo"
 		namespace = "default"
 	)
+
 	instance := &iampolicyv1.IamPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -65,13 +62,13 @@ func TestReconcile(t *testing.T) {
 	// Objects to track in the fake client.
 	objs := []runtime.Object{instance}
 	// Register operator types with the runtime scheme.
-	s := scheme.Scheme
-	s.AddKnownTypes(iampolicyv1.GroupVersion, instance)
+	runtimeScheme := scheme.Scheme
+	runtimeScheme.AddKnownTypes(iampolicyv1.GroupVersion, instance)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 	// Create a ReconcileIamPolicy object with the scheme and fake client
-	r := &IamPolicyReconciler{Client: cl, Scheme: s, Recorder: nil}
+	reconcileIamPolicy := &IamPolicyReconciler{Client: cl, Scheme: runtimeScheme, Recorder: nil}
 
 	// Mock request to simulate Reconcile() being called on an event for a
 	// watched resource .
@@ -82,11 +79,14 @@ func TestReconcile(t *testing.T) {
 		},
 	}
 	var simpleClient kubernetes.Interface = testclient.NewSimpleClientset()
+
 	common.Initialize(&simpleClient, nil)
-	res, err := r.Reconcile(context.TODO(), req)
+
+	res, err := reconcileIamPolicy.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+
 	t.Log(res)
 }
 
@@ -95,13 +95,16 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 		name      = "foo"
 		namespace = "default"
 	)
-	var typeMeta = metav1.TypeMeta{
+
+	typeMeta := metav1.TypeMeta{
 		Kind: "namespace",
 	}
-	var objMeta = metav1.ObjectMeta{
+
+	objMeta := metav1.ObjectMeta{
 		Name: "default",
 	}
-	var ns = coretypes.Namespace{
+
+	nameSpace := coretypes.Namespace{
 		TypeMeta:   typeMeta,
 		ObjectMeta: objMeta,
 	}
@@ -126,39 +129,52 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 	// Objects to track in the fake client.
 	objs := []runtime.Object{instance}
 	// Register operator types with the runtime scheme.
-	s := scheme.Scheme
-	s.AddKnownTypes(iampolicyv1.GroupVersion, instance)
+	runtimeScheme := scheme.Scheme
+	runtimeScheme.AddKnownTypes(iampolicyv1.GroupVersion, instance)
 
 	// Create a fake client to mock API calls.
-	cl := fake.NewFakeClient(objs...)
+	cl := fake.NewClientBuilder().WithRuntimeObjects(objs...).Build()
 
 	// Create a ReconcileIamPolicy object with the scheme and fake client.
-	r := &IamPolicyReconciler{Client: cl, Scheme: s, Recorder: nil}
+	reconcileIamPolicy := &IamPolicyReconciler{Client: cl, Scheme: runtimeScheme, Recorder: nil}
 	var simpleClient kubernetes.Interface = testclient.NewSimpleClientset()
-	simpleClient.CoreV1().Namespaces().Create(context.TODO(), &ns, metav1.CreateOptions{})
+
+	_, err := simpleClient.CoreV1().Namespaces().Create(context.TODO(), &nameSpace, metav1.CreateOptions{})
+	if err != nil {
+		panic(err)
+	}
+
 	common.Initialize(&simpleClient, nil)
-	res, err := r.Reconcile(context.TODO(), req)
+
+	res, err := reconcileIamPolicy.Reconcile(context.TODO(), req)
 	if err != nil {
 		t.Fatalf("reconcile: (%v)", err)
 	}
+
 	t.Log(res)
-	var target = []iampolicyv1.NonEmptyString{"default"}
+
+	target := []iampolicyv1.NonEmptyString{"default"}
 	iamPolicy.Spec.NamespaceSelector.Include = target
 	handleAddingPolicy(&iamPolicy)
+
 	exitExecLoop = "true"
+
 	PeriodicallyExecIamPolicies(1)
 }
 
 func TestCheckUnNamespacedPolicies(t *testing.T) {
 	var simpleClient kubernetes.Interface = testclient.NewSimpleClientset()
+
 	common.Initialize(&simpleClient, nil)
-	var iamPolicy = iampolicyv1.IamPolicy{
+
+	iamPolicy := iampolicyv1.IamPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
-		}}
+		},
+	}
 
-	var policies = map[string]*iampolicyv1.IamPolicy{}
+	policies := map[string]*iampolicyv1.IamPolicy{}
 	policies["policy1"] = &iamPolicy
 
 	_, err := checkUnNamespacedPolicies(policies)
@@ -169,19 +185,19 @@ func TestEnsureDefaultLabel(t *testing.T) {
 	updateNeeded := ensureDefaultLabel(&iamPolicy)
 	assert.True(t, updateNeeded)
 
-	var labels1 = map[string]string{}
+	labels1 := map[string]string{}
 	labels1["category"] = grcCategory
 	iamPolicy.Labels = labels1
 	updateNeeded = ensureDefaultLabel(&iamPolicy)
 	assert.False(t, updateNeeded)
 
-	var labels2 = map[string]string{}
+	labels2 := map[string]string{}
 	labels2["category"] = "foo"
 	iamPolicy.Labels = labels2
 	updateNeeded = ensureDefaultLabel(&iamPolicy)
 	assert.True(t, updateNeeded)
 
-	var labels3 = map[string]string{}
+	labels3 := map[string]string{}
 	labels3["foo"] = grcCategory
 	iamPolicy.Labels = labels3
 	updateNeeded = ensureDefaultLabel(&iamPolicy)
@@ -213,9 +229,9 @@ func TestGetGroupMembership(t *testing.T) {
 		defer func() { KubeDynamicClient = oldDynamicClient }()
 
 		// Register the OpenShift Group type with the runtime scheme
-		s := scheme.Scheme
-		s.AddKnownTypes(groupGV, &group{})
-		var client dynamic.Interface = testdynamicclient.NewSimpleDynamicClient(s, &test.group)
+		runtimeScheme := scheme.Scheme
+		runtimeScheme.AddKnownTypes(groupGV, &group{})
+		var client dynamic.Interface = testdynamicclient.NewSimpleDynamicClient(runtimeScheme, &test.group)
 		KubeDynamicClient = &client
 
 		users, err := getGroupMembership(test.group.Name)
@@ -230,8 +246,9 @@ func TestCheckAllClusterLevel(t *testing.T) {
 	defer func() { KubeDynamicClient = oldDynamicClient }()
 
 	// Register the OpenShift Group type with the runtime scheme
-	s := scheme.Scheme
-	s.AddKnownTypes(groupGV, &group{})
+	runtimeScheme := scheme.Scheme
+	runtimeScheme.AddKnownTypes(groupGV, &group{})
+
 	groupObj := group{ObjectMeta: metav1.ObjectMeta{Name: "admins"}, Users: []string{"tom.hanks"}}
 
 	tests := []struct {
@@ -318,47 +335,49 @@ func TestCheckAllClusterLevel(t *testing.T) {
 
 	for _, test := range tests {
 		test := test
+
 		var crbName string
 		if test.additionalCRB != nil {
 			crbName = test.additionalCRB.Name
 		}
+
 		testName := fmt.Sprintf(
 			"crb=%s, ignoreCRBs=%v, expected=%d", crbName, test.ignoreCRBs, test.expected,
 		)
+
 		t.Run(
 			testName,
 			func(t *testing.T) {
-
 				var client dynamic.Interface = testdynamicclient.NewSimpleDynamicClient(
-					s, &groupObj,
+					runtimeScheme, &groupObj,
 				)
 				KubeDynamicClient = &client
 
-				var userSubject = sub.Subject{
+				userSubject := sub.Subject{
 					APIGroup:  "",
 					Kind:      "User",
 					Name:      "user1",
 					Namespace: "default",
 				}
-				var groupSubject = sub.Subject{
+				groupSubject := sub.Subject{
 					APIGroup:  "",
 					Kind:      "Group",
 					Name:      "admins",
 					Namespace: "default",
 				}
 
-				var clusterRoleBinding = sub.ClusterRoleBinding{
+				clusterRoleBinding := sub.ClusterRoleBinding{
 					Subjects: []sub.Subject{userSubject, groupSubject},
 					RoleRef: sub.RoleRef{
 						Kind: "ClusterRole",
 						Name: "cluster-admin",
 					},
 				}
-				var items = []sub.ClusterRoleBinding{clusterRoleBinding}
+				items := []sub.ClusterRoleBinding{clusterRoleBinding}
 				if test.additionalCRB != nil {
 					items = append(items, *test.additionalCRB)
 				}
-				var clusterRoleBindingList = sub.ClusterRoleBindingList{
+				clusterRoleBindingList := sub.ClusterRoleBindingList{
 					Items: items,
 				}
 
@@ -374,16 +393,16 @@ func TestCheckAllClusterLevel(t *testing.T) {
 }
 
 func TestPrintMap(t *testing.T) {
-	var policies = map[string]*iampolicyv1.IamPolicy{}
+	policies := map[string]*iampolicyv1.IamPolicy{}
 	policies["policy1"] = &iamPolicy
 	printMap(policies)
 }
 
 func TestCreateParentPolicy(t *testing.T) {
-	var ownerReference = metav1.OwnerReference{
+	ownerReference := metav1.OwnerReference{
 		Name: "foo",
 	}
-	var ownerReferences = []metav1.OwnerReference{}
+	ownerReferences := []metav1.OwnerReference{}
 	ownerReferences = append(ownerReferences, ownerReference)
 	iamPolicy.OwnerReferences = ownerReferences
 
@@ -394,52 +413,60 @@ func TestCreateParentPolicy(t *testing.T) {
 
 func TestHandleAddingPolicy(t *testing.T) {
 	var simpleClient kubernetes.Interface = testclient.NewSimpleClientset()
-	var typeMeta = metav1.TypeMeta{
+
+	typeMeta := metav1.TypeMeta{
 		Kind: "namespace",
 	}
-	var objMeta = metav1.ObjectMeta{
+
+	objMeta := metav1.ObjectMeta{
 		Name: "default",
 	}
-	var ns = coretypes.Namespace{
+
+	nameSpace := coretypes.Namespace{
 		TypeMeta:   typeMeta,
 		ObjectMeta: objMeta,
 	}
-	simpleClient.CoreV1().Namespaces().Create(context.TODO(), &ns, metav1.CreateOptions{})
+
+	_, err := simpleClient.CoreV1().Namespaces().Create(context.TODO(), &nameSpace, metav1.CreateOptions{})
+	if err != nil {
+		panic(err)
+	}
+
 	common.Initialize(&simpleClient, nil)
 	handleAddingPolicy(&iamPolicy)
 	policy, found := availablePolicies.GetObject(iamPolicy.Namespace + "." + iamPolicy.Name)
 	assert.True(t, found)
 	assert.NotNil(t, policy)
 	handleRemovingPolicy("foo", "default")
+
 	policy, found = availablePolicies.GetObject(iamPolicy.Namespace + "." + iamPolicy.Name)
 	assert.False(t, found)
 	assert.Nil(t, policy)
 }
 
 func TestGetContainerID(t *testing.T) {
-	var containerStateWaiting = coretypes.ContainerStateWaiting{
+	containerStateWaiting := coretypes.ContainerStateWaiting{
 		Reason: "unknown",
 	}
-	var containerState = coretypes.ContainerState{
+	containerState := coretypes.ContainerState{
 		Waiting: &containerStateWaiting,
 	}
-	var containerStatus = coretypes.ContainerStatus{
+	containerStatus := coretypes.ContainerStatus{
 		State:       containerState,
 		ContainerID: "id",
 	}
 	var containerStatuses []coretypes.ContainerStatus
 	containerStatuses = append(containerStatuses, containerStatus)
-	var podStatus = coretypes.PodStatus{
+	podStatus := coretypes.PodStatus{
 		ContainerStatuses: containerStatuses,
 	}
-	var pod = coretypes.Pod{
+	pod := coretypes.Pod{
 		Status: podStatus,
 	}
 	getContainerID(pod, "foo")
 }
 
 func TestAddViolationCount(t *testing.T) {
-
 	tests := []struct {
 		compliancyDetails map[string]iampolicyv1.CompliancyDetail
 		userCount         int
@@ -490,7 +517,13 @@ func TestAddViolationCount(t *testing.T) {
 			true,
 		},
 		{
-			map[string]iampolicyv1.CompliancyDetail{"foo": {"cluster-wide": {"The number of users with the cluster-admin role is at least 5 above the specified limit"}}},
+			map[string]iampolicyv1.CompliancyDetail{
+				"foo": {
+					"cluster-wide": {
+						"The number of users with the cluster-admin role is at least 5 above the specified limit",
+					},
+				},
+			},
 			5,
 			"cluster-admin",
 			"The number of users with the cluster-admin role is at least 5 above the specified limit",

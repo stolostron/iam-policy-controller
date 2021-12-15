@@ -10,24 +10,24 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"runtime"
 	"strings"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
 	"github.com/open-cluster-management/addon-framework/pkg/lease"
 	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
-	"github.com/open-cluster-management/iam-policy-controller/version"
 	"github.com/spf13/pflag"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -37,6 +37,7 @@ import (
 	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
 	"github.com/open-cluster-management/iam-policy-controller/controllers"
 	common "github.com/open-cluster-management/iam-policy-controller/pkg/common"
+	"github.com/open-cluster-management/iam-policy-controller/version"
 )
 
 // Change below variables to serve metrics on different host or port.
@@ -48,9 +49,8 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(policiesv1.AddToScheme(scheme))
-
-	utilruntime.Must(iampolicyv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
+	utilruntime.Must(iampolicyv1.AddToScheme(scheme))
 }
 
 func printVersion() {
@@ -60,7 +60,6 @@ func printVersion() {
 }
 
 func main() {
-
 	// Add flags registered by imported packages (e.g. glog and
 	// controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -68,13 +67,30 @@ func main() {
 	var clusterName, namespace, eventOnParent, hubConfigSecretNs, hubConfigSecretName, metricsAddr, probeAddr string
 	var frequency uint
 	var enableLease, enableLeaderElection, legacyLeaderElection bool
+
 	pflag.StringVar(&namespace, "watch-ns", "default", "Watched Kubernetes namespace")
 	pflag.UintVar(&frequency, "update-frequency", 10, "The status update frequency (in seconds) of a mutation policy")
-	pflag.StringVar(&eventOnParent, "parent-event", "ifpresent", "to also send status events on parent policy. options are: yes/no/ifpresent")
+	pflag.StringVar(
+		&eventOnParent,
+		"parent-event",
+		"ifpresent",
+		"to also send status events on parent policy. options are: yes/no/ifpresent")
 	pflag.StringVar(&clusterName, "cluster-name", "mcm-managed-cluster", "Name of the cluster")
-	pflag.BoolVar(&enableLease, "enable-lease", false, "If enabled, the controller will start the lease controller to report its status")
-	pflag.StringVar(&hubConfigSecretNs, "hubconfig-secret-ns", "open-cluster-management-agent-addon", "Namespace for hub config kube-secret")
-	pflag.StringVar(&hubConfigSecretName, "hubconfig-secret-name", "iam-policy-controller-hub-kubeconfig", "Name of the hub config kube-secret")
+	pflag.BoolVar(
+		&enableLease,
+		"enable-lease",
+		false,
+		"If enabled, the controller will start the lease controller to report its status")
+	pflag.StringVar(
+		&hubConfigSecretNs,
+		"hubconfig-secret-ns",
+		"open-cluster-management-agent-addon",
+		"Namespace for hub config kube-secret")
+	pflag.StringVar(
+		&hubConfigSecretName,
+		"hubconfig-secret-name",
+		"iam-policy-controller-hub-kubeconfig",
+		"Name of the hub config kube-secret")
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", true,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -140,6 +156,7 @@ func main() {
 		log.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
+
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		log.Error(err, "unable to set up ready check")
 		os.Exit(1)
@@ -147,17 +164,23 @@ func main() {
 
 	// Initialize some variables
 	var generatedClient kubernetes.Interface = kubernetes.NewForConfigOrDie(mgr.GetConfig())
-	var dynamicClient dynamic.Interface = dynamic.NewForConfigOrDie(mgr.GetConfig())
+
+	dynamicClient := dynamic.NewForConfigOrDie(mgr.GetConfig())
 	common.Initialize(&generatedClient, mgr.GetConfig())
 
-	controllers.Initialize(&generatedClient, &dynamicClient, mgr, clusterName, namespace, eventOnParent) /* #nosec G104 */
-	// PeriodicallyExecIamPolicies is the go-routine that periodically checks the policies and does the needed work to make sure the desired state is achieved
+	/* #nosec G104 */
+	iniResult := controllers.Initialize(&generatedClient, &dynamicClient, mgr, clusterName, namespace, eventOnParent)
+	if iniResult != nil {
+		panic(iniResult)
+	}
+	// PeriodicallyExecIamPolicies is the go-routine that periodically checks the policies
+	// and does the needed work to make sure the desired state is achieved
 	go controllers.PeriodicallyExecIamPolicies(frequency)
 
 	if enableLease {
 		operatorNs, err := common.GetOperatorNamespace()
 		if err != nil {
-			if err == common.ErrNoNamespace || err == common.ErrRunLocal {
+			if errors.Is(err, common.ErrNoNamespace) || errors.Is(err, common.ErrRunLocal) {
 				log.Info("Skipping lease; not running in a cluster.")
 			} else {
 				log.Error(err, "Failed to get operator namespace")
@@ -180,6 +203,7 @@ func main() {
 	}
 
 	log.Info("starting manager")
+
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		log.Error(err, "problem running manager")
 		os.Exit(1)

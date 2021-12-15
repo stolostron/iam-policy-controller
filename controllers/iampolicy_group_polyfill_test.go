@@ -22,8 +22,10 @@ func (in *group) DeepCopy() *group {
 	if in == nil {
 		return nil
 	}
+
 	out := new(group)
 	in.DeepCopyInto(out)
+
 	return out
 }
 
@@ -31,6 +33,7 @@ func (in *group) DeepCopyInto(out *group) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
 	if in.Users != nil {
 		in, out := &in.Users, &out.Users
 		*out = make([]string, len(*in))
@@ -39,8 +42,5 @@ func (in *group) DeepCopyInto(out *group) {
 }
 
 func (in *group) DeepCopyObject() runtime.Object {
-	if c := in.DeepCopy(); c != nil {
-		return c
-	}
-	return nil
+	return in.DeepCopy()
 }

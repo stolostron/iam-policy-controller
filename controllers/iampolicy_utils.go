@@ -22,19 +22,21 @@ func convertPolicyStatusToString(plc *iampolicyv1.IamPolicy) (results string) {
 	if plc.Status.ComplianceState == "" {
 		return result
 	}
+
 	result = string(plc.Status.ComplianceState)
 
 	if plc.Status.CompliancyDetails == nil {
 		return result
 	}
+
 	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
 		return result
-
 	}
+
 	if result == "NonCompliant" {
 		for _, v := range plc.Status.CompliancyDetails[plc.Name] {
-			var complianceStatus = !strings.Contains(fmt.Sprint(v), "0")
-			if complianceStatus == true {
+			complianceStatus := !strings.Contains(fmt.Sprint(v), "0")
+			if complianceStatus {
 				result += fmt.Sprintf("; %s", strings.Join(v, ", "))
 			}
 		}
@@ -43,5 +45,6 @@ func convertPolicyStatusToString(plc *iampolicyv1.IamPolicy) (results string) {
 			result += fmt.Sprintf("; %s", strings.Join(v, ", "))
 		}
 	}
+
 	return result
 }

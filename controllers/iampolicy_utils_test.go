@@ -11,9 +11,10 @@ package controllers
 import (
 	"testing"
 
-	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
 )
 
 func TestConvertPolicyStatusToString(t *testing.T) {
@@ -26,8 +27,8 @@ func TestConvertPolicyStatusToString(t *testing.T) {
 			MaxClusterRoleBindingUsers: 1,
 		},
 	}
-	var compliantDetail = map[string][]string{}
-	var compliantDetails = map[string]iampolicyv1.CompliancyDetail{}
+	compliantDetail := map[string][]string{}
+	compliantDetails := map[string]iampolicyv1.CompliancyDetail{}
 	details := []string{}
 
 	details = append(details, "detail1", "detail2")
@@ -41,7 +42,7 @@ func TestConvertPolicyStatusToString(t *testing.T) {
 		CompliancyDetails: compliantDetails,
 	}
 	instance.Status = iamPolicyStatus
-	var policyInString = convertPolicyStatusToString(instance)
+	policyInString := convertPolicyStatusToString(instance)
 	assert.NotNil(t, policyInString)
 
 	instance.Status.ComplianceState = ""
@@ -54,6 +55,6 @@ func TestConvertPolicyStatusToString(t *testing.T) {
 
 	instance.Status = iamPolicyStatus
 	instance.Status.ComplianceState = "NonCompliant"
-	assert.NotNil(t, policyInString)
 
+	assert.NotNil(t, policyInString)
 }

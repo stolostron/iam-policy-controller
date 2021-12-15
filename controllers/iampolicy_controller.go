@@ -59,6 +59,8 @@ var PlcChan chan *iampolicyv1.IamPolicy
 
 // KubeClient a k8s client used for k8s native resources
 var KubeClient *kubernetes.Interface
+
+// KubeDynamicClient a dynamic k8s client
 var KubeDynamicClient *dynamic.Interface
 
 var reconcilingAgent *IamPolicyReconciler
@@ -70,7 +72,7 @@ var NamespaceWatched string
 var EventOnParent string
 
 // Formats the reason section of generated events
-var formatString string = "policy: %s/%s"
+var formatString = "policy: %s/%s"
 
 // A way to allow exiting out of the periodic policy check loop
 var exitExecLoop string
@@ -80,17 +82,23 @@ const violationMsgF = "The number of users with the %s role is at least %s above
 
 // Format string taking the role name to make the regex to extract the usercount from the violation message
 // Reminder: always `regexp.QuoteMeta` the input here.
-const violationMsgFUserCountRegex = `^(?:The number of users with the %s role is at least )(\d+)(?: above the specified limit)$`
+const violationMsgFUserCountRegex = `^(?:The number of users with the %s role is at least )` +
+	`(\d+)(?: above the specified limit)$`
 
 // The default IgnoreClusterRoleBindings regex when not specified in the policy.
 const defaultIgnoreCRBs = `^system:.+$`
 
-// Initialize to initialize some controller varaibles
-func Initialize(kClient *kubernetes.Interface, kDynamicClient *dynamic.Interface, mgr manager.Manager, clsName, namespace,
+// Initialize to initialize some controller variables
+func Initialize(
+	kClient *kubernetes.Interface,
+	kDynamicClient *dynamic.Interface,
+	mgr manager.Manager,
+	clsName,
+	namespace,
 	eventParent string) (err error) {
 	KubeClient = kClient
 	KubeDynamicClient = kDynamicClient
-	PlcChan = make(chan *iampolicyv1.IamPolicy, 100) //buffering up to 100 policies for update
+	PlcChan = make(chan *iampolicyv1.IamPolicy, 100) // buffering up to 100 policies for update
 
 	NamespaceWatched = namespace
 
@@ -102,7 +110,7 @@ func Initialize(kClient *kubernetes.Interface, kDynamicClient *dynamic.Interface
 // blank assignment to verify that ReconcileIamPolicy implements reconcile.Reconciler
 var _ reconcile.Reconciler = &IamPolicyReconciler{}
 
-// ReconcileIamPolicy reconciles a IamPolicy object
+// IamPolicyReconciler reconciles a IamPolicy object
 // Annotation for generating RBAC role for writing Events
 type IamPolicyReconciler struct {
 	client.Client
@@ -133,6 +141,8 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 
 	// Fetch the IamPolicy instance
 	instance := &iampolicyv1.IamPolicy{}
+
+	//nolint:contextcheck
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -140,8 +150,10 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
 			handleRemovingPolicy(request.NamespacedName.Name, request.NamespacedName.Namespace)
+
 			return reconcile.Result{}, nil
 		}
+
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
@@ -151,18 +163,24 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 		if !ensureDefaultLabel(instance) {
 			updateNeeded = true
 		}
+
 		if updateNeeded {
+			//nolint:contextcheck
 			if err := r.Update(context.Background(), instance); err != nil {
+				// return nil here is intent
+				//nolint:nilerr
 				return reconcile.Result{Requeue: true}, nil
 			}
 		}
-		instance.Status.CompliancyDetails = nil //reset CompliancyDetails
+
+		instance.Status.CompliancyDetails = nil // reset CompliancyDetails
 
 		reqLogger.Info("Iam policy was found, adding it...")
 		handleAddingPolicy(instance)
-
 	}
+
 	reqLogger.Info("Reconcile complete.")
+
 	return reconcile.Result{}, nil
 }
 
@@ -175,40 +193,49 @@ func (r *IamPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func ensureDefaultLabel(instance *iampolicyv1.IamPolicy) (updateNeeded bool) {
-	//we need to ensure this label exists -> category: "System and Information Integrity"
+	// we need to ensure this label exists -> category: "System and Information Integrity"
 	if instance.ObjectMeta.Labels == nil {
 		newlbl := make(map[string]string)
 		newlbl["category"] = grcCategory
 		instance.ObjectMeta.Labels = newlbl
+
 		return true
 	}
+
 	if _, ok := instance.ObjectMeta.Labels["category"]; !ok {
 		instance.ObjectMeta.Labels["category"] = grcCategory
+
 		return true
 	}
+
 	if instance.ObjectMeta.Labels["category"] != grcCategory {
 		instance.ObjectMeta.Labels["category"] = grcCategory
+
 		return true
 	}
+
 	return false
 }
 
 // PeriodicallyExecIamPolicies always check status - let this be the only function in the controller
 func PeriodicallyExecIamPolicies(freq uint) {
 	var plcToUpdateMap map[string]*iampolicyv1.IamPolicy
+
 	for {
 		start := time.Now()
+
 		printMap(availablePolicies.PolicyMap)
+
 		plcToUpdateMap = make(map[string]*iampolicyv1.IamPolicy)
 
-		//currently no support for perNamespace rolebindings
+		// currently no support for perNamespace rolebindings
 		update, err := checkUnNamespacedPolicies(plcToUpdateMap)
 		if err != nil {
 			glog.Errorf("Error checking un-namespaced policies, additional info %v \n", err)
 		}
 
 		if update {
-			//update status of all policies that changed:
+			// update status of all policies that changed:
 			faultyPlc, err := updatePolicyStatus(plcToUpdateMap)
 			if err != nil {
 				glog.Errorf("reason: policy update error, subject: policy/%v, namespace: %v, according to "+
@@ -216,12 +243,12 @@ func PeriodicallyExecIamPolicies(freq uint) {
 			}
 		}
 
-		//check if continue
+		// check if continue
 		if exitExecLoop == "true" {
 			return
 		}
-		//making sure that if processing is > freq we don't sleep
-		//if freq > processing we sleep for the remaining duration
+		// making sure that if processing is > freq we don't sleep
+		// if freq > processing we sleep for the remaining duration
 		elapsed := time.Since(start) / 1000000000 // convert to seconds
 		if float64(freq) > float64(elapsed) {
 			remainingSleep := float64(freq) - float64(elapsed)
@@ -230,20 +257,25 @@ func PeriodicallyExecIamPolicies(freq uint) {
 	}
 }
 
-func checkUnNamespacedPolicies(plcToUpdateMap map[string]*iampolicyv1.IamPolicy) (bool, error) {
+func checkUnNamespacedPolicies(
+	plcToUpdateMap map[string]*iampolicyv1.IamPolicy) (bool, error) {
 	plcMap := convertMaptoPolicyNameKey()
 
 	// group the policies with cluster users and the ones with groups
 	// take the plc with min users and groups and make it your baseline
 
-	ClusteRoleBindingList, err := (*common.KubeClient).RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})
+	ClusteRoleBindingList, err := (*common.KubeClient).RbacV1().ClusterRoleBindings().List(
+		context.TODO(),
+		metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("reason: communication error, subject: k8s API server, namespace: all, "+
 			"according to policy: none, additional-info: %v\n", err)
+
 		return false, err
 	}
 
 	update := false
+
 	for _, policy := range plcMap {
 		var userViolationCount int
 
@@ -253,12 +285,18 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*iampolicyv1.IamPolicy)
 		}
 
 		clusterLevelUsers, err := checkAllClusterLevel(
-			ClusteRoleBindingList, clusterRoleRef, policy.Spec.IgnoreClusterRoleBindings,
+			ClusteRoleBindingList,
+			clusterRoleRef,
+			policy.Spec.IgnoreClusterRoleBindings,
 		)
+
 		queryErrEncountered := false
+
 		if err != nil {
 			queryErrEncountered = true
-			glog.Infof("An error was encountered when getting the user list, so the policy %s can only go from no status or compliant to non-compliant", policy.Name)
+
+			glog.Infof("An error was encountered when getting the user list, "+
+				"so the policy %s can only go from no status or compliant to non-compliant", policy.Name)
 		}
 
 		glog.Infof("The user list was retrieved and %d were found", clusterLevelUsers)
@@ -278,7 +316,9 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*iampolicyv1.IamPolicy)
 					continue
 				}
 			} else if policy.Status.ComplianceState != iampolicyv1.Compliant {
-				glog.Infof("Not changing non-compliant to compliant on policy %s due to the error that was encountered when getting the user list", policy.Name)
+				glog.Infof("Not changing non-compliant to compliant on policy %s "+
+					"due to the error that was encountered when getting the user list", policy.Name)
+
 				continue
 			}
 		}
@@ -287,8 +327,10 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*iampolicyv1.IamPolicy)
 			plcToUpdateMap[policy.Name] = policy
 			update = true
 		}
+
 		checkComplianceBasedOnDetails(policy, clusterRoleRef)
 	}
+
 	return update, nil
 }
 
@@ -296,19 +338,27 @@ func checkUnNamespacedPolicies(plcToUpdateMap map[string]*iampolicyv1.IamPolicy)
 // or is malformed, and empty string slice is returned. If the query itself failed, an error is
 // returned.
 func getGroupMembership(group string) ([]string, error) {
-	rv, err := (*KubeDynamicClient).Resource(openShiftGroupGVR).Get(context.TODO(), group, metav1.GetOptions{})
+	openShiftUserGroup, err := (*KubeDynamicClient).Resource(openShiftGroupGVR).Get(
+		context.TODO(),
+		group,
+		metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info(fmt.Sprintf("The group %s was not found. It may not exist or may not be an OpenShift group.", group))
+			log.Info(fmt.Sprintf("The group %s was not found. "+
+				"It may not exist or may not be an OpenShift group.", group))
+
 			return []string{}, nil
 		}
 
 		return nil, fmt.Errorf("failed to get the OpenShift group %s: %w", group, err)
 	}
 
-	users, found, err := unstructured.NestedStringSlice(rv.Object, "users")
+	users, found, err := unstructured.NestedStringSlice(openShiftUserGroup.Object, "users")
 	if err != nil || !found {
 		log.Info(fmt.Sprintf("The group %s was in an unexpected format", group))
+
+		// return nil here is intent
+		//nolint:nilerr
 		return []string{}, nil
 	}
 
@@ -325,10 +375,12 @@ func checkAllClusterLevel(
 	}
 
 	compiledIgnoreCRBs := make([]*regexp.Regexp, 0, len(ignoreCRBs))
+
 	for _, regex := range ignoreCRBs {
 		regex, err := regexp.Compile(string(regex))
 		if err != nil {
 			err = fmt.Errorf("the ignoreClusterRoleBindings entry of %s is invalid: %w", regex, err)
+
 			return 0, err
 		}
 
@@ -336,8 +388,10 @@ func checkAllClusterLevel(
 	}
 
 	usersMap := make(map[string]bool)
+
 	for _, clusterRoleBinding := range clusterRoleBindingList.Items {
 		ignore := false
+
 		for _, regex := range compiledIgnoreCRBs {
 			if regex.MatchString(clusterRoleBinding.Name) {
 				log.Info(
@@ -347,7 +401,9 @@ func checkAllClusterLevel(
 						clusterRoleBinding.Name,
 					),
 				)
+
 				ignore = true
+
 				break
 			}
 		}
@@ -356,8 +412,8 @@ func checkAllClusterLevel(
 			continue
 		}
 
-		//Only consider role bindings with matching referenced cluster role
-		var roleRef = clusterRoleBinding.RoleRef
+		// Only consider role bindings with matching referenced cluster role
+		roleRef := clusterRoleBinding.RoleRef
 		if roleRef.Kind == "ClusterRole" && roleRef.Name == clusterroleref {
 			for _, subject := range clusterRoleBinding.Subjects {
 				if subject.Kind == "User" {
@@ -366,6 +422,7 @@ func checkAllClusterLevel(
 					users, err := getGroupMembership(subject.Name)
 					if err != nil {
 						log.Error(err, "The policy compliance will not be able to be fully determined")
+
 						continue
 					}
 
@@ -376,6 +433,7 @@ func checkAllClusterLevel(
 			}
 		}
 	}
+
 	return len(usersMap), err
 }
 
@@ -384,30 +442,39 @@ func convertMaptoPolicyNameKey() map[string]*iampolicyv1.IamPolicy {
 	for _, policy := range availablePolicies.PolicyMap {
 		plcMap[fmt.Sprintf("%s.%s", policy.Namespace, policy.Name)] = policy
 	}
+
 	return plcMap
 }
 
 func addViolationCount(plc *iampolicyv1.IamPolicy, roleName string, userCount int, namespace string) (changed bool) {
 	msg := fmt.Sprintf(violationMsgF, roleName, fmt.Sprint(userCount))
+
 	if plc.Status.CompliancyDetails == nil {
 		plc.Status.CompliancyDetails = make(map[string]iampolicyv1.CompliancyDetail)
 	}
+
 	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
 		plc.Status.CompliancyDetails[plc.Name] = make(map[string][]string)
-
 	}
+
 	if plc.Status.CompliancyDetails[plc.Name][namespace] == nil {
 		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{}
 	}
+
 	if len(plc.Status.CompliancyDetails[plc.Name][namespace]) == 0 {
 		plc.Status.CompliancyDetails[plc.Name][namespace] = []string{msg}
+
 		return true
 	}
+
 	oldUserCount, err := extractUserCount(plc.Status.CompliancyDetails[plc.Name][namespace][0], roleName)
+
 	if err == nil && oldUserCount == userCount {
 		return false
 	}
+
 	plc.Status.CompliancyDetails[plc.Name][namespace][0] = msg
+
 	return true
 }
 
@@ -416,16 +483,20 @@ func checkComplianceBasedOnDetails(plc *iampolicyv1.IamPolicy, roleName string) 
 	if plc.Status.CompliancyDetails == nil {
 		return
 	}
+
 	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
 		return
 	}
+
 	if len(plc.Status.CompliancyDetails[plc.Name]) == 0 {
 		return
 	}
+
 	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
 		if len(msgList) == 0 {
 			return
 		}
+
 		userCount, err := extractUserCount(plc.Status.CompliancyDetails[plc.Name][namespace][0], roleName)
 		if err == nil && userCount != 0 {
 			plc.Status.ComplianceState = iampolicyv1.NonCompliant
@@ -439,36 +510,44 @@ func updatePolicyStatus(policies map[string]*iampolicyv1.IamPolicy) (*iampolicyv
 		if err != nil {
 			return instance, err
 		}
+
 		if EventOnParent != "no" {
 			createParentPolicyEvent(instance)
 		}
-		{ // Can we make this eventing enabled by a flag
-			if reconcilingAgent.Recorder != nil {
-				if instance.Status.ComplianceState == iampolicyv1.NonCompliant {
-					reconcilingAgent.Recorder.Event(instance, corev1.EventTypeWarning,
-						fmt.Sprintf(formatString, instance.Namespace, instance.Name),
-						convertPolicyStatusToString(instance))
-				} else {
-					reconcilingAgent.Recorder.Event(instance, corev1.EventTypeNormal,
-						fmt.Sprintf(formatString, instance.Namespace, instance.Name),
-						convertPolicyStatusToString(instance))
-				}
+
+		// Can we make this eventing enabled by a flag
+		if reconcilingAgent.Recorder != nil {
+			if instance.Status.ComplianceState == iampolicyv1.NonCompliant {
+				reconcilingAgent.Recorder.Event(instance, corev1.EventTypeWarning,
+					fmt.Sprintf(formatString, instance.Namespace, instance.Name),
+					convertPolicyStatusToString(instance))
+			} else {
+				reconcilingAgent.Recorder.Event(instance, corev1.EventTypeNormal,
+					fmt.Sprintf(formatString, instance.Namespace, instance.Name),
+					convertPolicyStatusToString(instance))
 			}
 		}
 	}
+
+	// return nil here is intent
+	//nolint:nilnil
 	return nil, nil
 }
 
 func extractUserCount(msg, roleName string) (int, error) {
 	regexStr := fmt.Sprintf(violationMsgFUserCountRegex, regexp.QuoteMeta(roleName))
-	re, err := regexp.Compile(regexStr)
+
+	regularExpression, err := regexp.Compile(regexStr)
 	if err != nil {
 		return 0, err
 	}
-	regexGroups := re.FindStringSubmatch(msg)
+
+	regexGroups := regularExpression.FindStringSubmatch(msg)
+
 	if len(regexGroups) < 1 {
 		return 0, fmt.Errorf("could not find userCount in message")
 	}
+
 	return strconv.Atoi(regexGroups[1])
 }
 
@@ -478,6 +557,7 @@ func getContainerID(pod corev1.Pod, containerName string) string {
 			return containerStatus.ContainerID
 		}
 	}
+
 	return ""
 }
 
@@ -490,7 +570,6 @@ func handleRemovingPolicy(name string, namespace string) {
 }
 
 func handleAddingPolicy(plc *iampolicyv1.IamPolicy) {
-
 	// Since this policy isn't namespace based it will ignore namespace selection so the cluster is always checked
 	availablePolicies.AddObject(fmt.Sprintf("%s.%s", plc.Namespace, plc.Name), plc)
 }
@@ -499,22 +578,25 @@ func handleAddingPolicy(plc *iampolicyv1.IamPolicy) {
 // Helper functions that pretty prints a map
 func printMap(myMap map[string]*iampolicyv1.IamPolicy) {
 	if len(myMap) == 0 {
-		fmt.Println("Waiting for iam policies to be available for processing... ")
+		log.Info("Waiting for iam policies to be available for processing... ")
+
 		return
 	}
-	fmt.Println("Available iam policies: ")
+
+	log.Info("Available iam policies: ")
+
 	for _, v := range myMap {
-		fmt.Printf("policy = %v \n", v.Name)
+		log.Info(fmt.Sprintf("policy = %v \n", v.Name))
 	}
 }
 
 func createParentPolicyEvent(instance *iampolicyv1.IamPolicy) {
 	if len(instance.OwnerReferences) == 0 {
-		return //there is nothing to do, since no owner is set
+		return // there is nothing to do, since no owner is set
 	}
 	// we are making an assumption that the GRC policy has a single owner, or we chose the first owner in the list
 	if string(instance.OwnerReferences[0].UID) == "" {
-		return //there is nothing to do, since no owner UID is set
+		return // there is nothing to do, since no owner UID is set
 	}
 
 	parentPlc := createParentPolicy(instance)
@@ -529,14 +611,17 @@ func createParentPolicyEvent(instance *iampolicyv1.IamPolicy) {
 }
 
 func createParentPolicy(instance *iampolicyv1.IamPolicy) policiesv1.Policy {
-	ns := common.ExtractNamespaceLabel(instance)
-	if ns == "" {
-		ns = NamespaceWatched
+	nameSpace := common.ExtractNamespaceLabel(instance)
+	if nameSpace == "" {
+		nameSpace = NamespaceWatched
 	}
+
 	plc := policiesv1.Policy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.OwnerReferences[0].Name,
-			Namespace: ns, // we are making an assumption here that the parent policy is in the watched-namespace passed as flag
+			Name: instance.OwnerReferences[0].Name,
+			// we are making an assumption here
+			// that the parent policy is in the watched-namespace passed as flag
+			Namespace: nameSpace,
 			UID:       instance.OwnerReferences[0].UID,
 		},
 		TypeMeta: metav1.TypeMeta{
@@ -544,5 +629,6 @@ func createParentPolicy(instance *iampolicyv1.IamPolicy) policiesv1.Policy {
 			APIVersion: "policy.open-cluster-management.io/v1",
 		},
 	}
+
 	return plc
 }

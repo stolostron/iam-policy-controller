@@ -45,6 +45,7 @@ IMAGE_NAME_AND_VERSION ?= $(REGISTRY)/$(IMG)
 GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
 
 USE_VENDORIZED_BUILD_HARNESS ?=
+export PATH=$(shell echo $$PATH):$(PWD)/bin
 
 ifndef USE_VENDORIZED_BUILD_HARNESS
 -include $(shell curl -s -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
@@ -52,16 +53,21 @@ else
 -include vbh/.build-harness-vendorized
 endif
 
+include build/common/Makefile.common.mk
+
 .PHONY: default
 default::
 	@echo "Build Harness Bootstrapped"
 
-.PHONY: all lint test dependencies build image run deploy install fmt vet generate
+.PHONY: all lint test dependencies build image run deploy install fmt vet generate \
+fmt vet generate go-coverage fmt-dependencies lint-dependencies
 
 all: test
 
-lint:
-	@echo "Linting disabled."
+lint-dependencies:
+	$(call go-get-tool,$(PWD)/bin/golangci-lint,github.com/golangci/golangci-lint/cmd/golangci-lint@v1.41.1)
+
+lint: lint-dependencies lint-all
 
 copyright-check:
 	./build/copyright-check.sh $(TRAVIS_BRANCH) $(TRAVIS_PULL_REQUEST_BRANCH)
@@ -109,8 +115,14 @@ create-ns:
 	@kubectl create namespace $(WATCH_NAMESPACE) || true
 
 # Run go fmt against code
-fmt:
-	go fmt ./...
+fmt-dependencies:
+	$(call go-get-tool,$(PWD)/bin/gci,github.com/daixiang0/gci@v0.2.9)
+	$(call go-get-tool,$(PWD)/bin/gofumpt,mvdan.cc/gofumpt@v0.2.0)
+
+fmt: fmt-dependencies
+	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofmt -s -w
+	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofumpt -l -w
+	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gci -w -local "$(shell cat go.mod | head -1 | cut -d " " -f 2)"
 
 # Run go vet against code
 vet:

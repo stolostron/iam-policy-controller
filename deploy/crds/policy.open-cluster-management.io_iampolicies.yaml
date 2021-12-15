@@ -94,9 +94,10 @@ spec:
                       type: string
                     type: array
                   type: object
+                description: reason for non-compliancy
                 type: object
               compliant:
-                description: ComplianceState shows the state of enforcement
+                description: Compliant, NonCompliant, UnknownCompliancy
                 type: string
             type: object
         type: object

@@ -157,7 +157,7 @@ spec:
               fieldPath: metadata.name
         - name: OPERATOR_NAME
           value: iam-policy-controller
-        image: quay.io/open-cluster-management/iam-policy-controller:latest
+        image: quay.io/stolostron/iam-policy-controller:latest
         imagePullPolicy: Always
         livenessProbe:
           httpGet:

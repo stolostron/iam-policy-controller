@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"strings"
 
-	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/policy/v1"
+	policiesv1 "github.com/stolostron/iam-policy-controller/pkg/apis/policy/v1"
 )
 
 //=================================================================

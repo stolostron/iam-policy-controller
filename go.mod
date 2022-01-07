@@ -1,4 +1,4 @@
-module github.com/open-cluster-management/iam-policy-controller
+module github.com/stolostron/iam-policy-controller
 
 go 1.17
 

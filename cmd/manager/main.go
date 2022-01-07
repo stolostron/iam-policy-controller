@@ -22,9 +22,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/open-cluster-management/addon-framework/pkg/lease"
-	"github.com/open-cluster-management/iam-policy-controller/pkg/apis"
-	"github.com/open-cluster-management/iam-policy-controller/pkg/controller"
-	"github.com/open-cluster-management/iam-policy-controller/version"
+	"github.com/stolostron/iam-policy-controller/pkg/apis"
+	"github.com/stolostron/iam-policy-controller/pkg/controller"
+	"github.com/stolostron/iam-policy-controller/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -37,8 +37,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	common "github.com/open-cluster-management/iam-policy-controller/pkg/common"
-	policyStatusHandler "github.com/open-cluster-management/iam-policy-controller/pkg/controller/iampolicy"
+	common "github.com/stolostron/iam-policy-controller/pkg/common"
+	policyStatusHandler "github.com/stolostron/iam-policy-controller/pkg/controller/iampolicy"
 )
 
 // Change below variables to serve metrics on different host or port.

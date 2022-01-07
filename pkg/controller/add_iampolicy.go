@@ -9,7 +9,7 @@
 package controller
 
 import (
-	"github.com/open-cluster-management/iam-policy-controller/pkg/controller/iampolicy"
+	"github.com/stolostron/iam-policy-controller/pkg/controller/iampolicy"
 )
 
 func init() {

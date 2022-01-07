@@ -17,9 +17,9 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/stolostron/addon-framework/pkg/lease"
-	policiesv1 "github.com/stolostron/governance-policy-propagator/api/v1"
+	"github.com/open-cluster-management/addon-framework/pkg/lease"
 	"github.com/spf13/pflag"
+	policiesv1 "github.com/stolostron/governance-policy-propagator/api/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 

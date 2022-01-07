@@ -11,7 +11,7 @@ package common
 import (
 	"sync"
 
-	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
+	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
 )
 
 // SyncedPolicyMap a thread safe map

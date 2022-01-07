@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
+	policiesv1 "github.com/stolostron/governance-policy-propagator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,8 +35,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
-	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
+	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
+	"github.com/stolostron/iam-policy-controller/pkg/common"
 )
 
 var log = logf.Log.WithName("controller_iampolicy")

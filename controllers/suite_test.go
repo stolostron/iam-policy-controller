@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	// +kubebuilder:scaffold:imports
-	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
+	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to

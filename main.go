@@ -18,8 +18,8 @@ import (
 	"strings"
 
 	"github.com/open-cluster-management/addon-framework/pkg/lease"
-	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	"github.com/spf13/pflag"
+	policiesv1 "github.com/stolostron/governance-policy-propagator/api/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
@@ -34,10 +34,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
-	"github.com/open-cluster-management/iam-policy-controller/controllers"
-	common "github.com/open-cluster-management/iam-policy-controller/pkg/common"
-	"github.com/open-cluster-management/iam-policy-controller/version"
+	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
+	"github.com/stolostron/iam-policy-controller/controllers"
+	common "github.com/stolostron/iam-policy-controller/pkg/common"
+	"github.com/stolostron/iam-policy-controller/version"
 )
 
 // Change below variables to serve metrics on different host or port.

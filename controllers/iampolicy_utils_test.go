@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
+	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
 )
 
 func TestConvertPolicyStatusToString(t *testing.T) {

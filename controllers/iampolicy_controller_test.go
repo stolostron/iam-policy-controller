@@ -27,8 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	iampolicyv1 "github.com/open-cluster-management/iam-policy-controller/api/v1"
-	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
+	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
+	"github.com/stolostron/iam-policy-controller/pkg/common"
 )
 
 var iamPolicy = iampolicyv1.IamPolicy{

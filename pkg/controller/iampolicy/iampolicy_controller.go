@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/policy/v1"
-	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
 	"github.com/operator-framework/operator-sdk/pkg/predicate"
+	policiesv1 "github.com/stolostron/iam-policy-controller/pkg/apis/policy/v1"
+	"github.com/stolostron/iam-policy-controller/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

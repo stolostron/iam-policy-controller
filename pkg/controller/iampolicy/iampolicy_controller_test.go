@@ -25,8 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	policiesv1 "github.com/open-cluster-management/iam-policy-controller/pkg/apis/policy/v1"
-	"github.com/open-cluster-management/iam-policy-controller/pkg/common"
+	policiesv1 "github.com/stolostron/iam-policy-controller/pkg/apis/policy/v1"
+	"github.com/stolostron/iam-policy-controller/pkg/common"
 )
 
 var mgr manager.Manager

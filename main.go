@@ -17,7 +17,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/open-cluster-management/addon-framework/pkg/lease"
 	"github.com/spf13/pflag"
 	policiesv1 "github.com/stolostron/governance-policy-propagator/api/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -28,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"open-cluster-management.io/addon-framework/pkg/lease"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"

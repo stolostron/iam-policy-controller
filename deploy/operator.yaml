@@ -15,7 +15,7 @@ spec:
       serviceAccountName: iam-policy-controller
       containers:
         - name: iam-policy-controller
-          image: quay.io/stolostron/iam-policy-controller:latest-dev
+          image: quay.io/stolostron/iam-policy-controller:latest-2.4
           command:
           - iam-policy-controller
           imagePullPolicy: Always

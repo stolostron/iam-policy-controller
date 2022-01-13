@@ -1,3 +1,0 @@
-version: "1"
-domain: open-cluster-management.io
-repo: github.com/stolostron/iam-security-policy-controller

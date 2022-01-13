@@ -15,7 +15,7 @@ GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
 USE_VENDORIZED_BUILD_HARNESS ?=
 
 ifndef USE_VENDORIZED_BUILD_HARNESS
--include $(shell curl -s -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/open-cluster-management/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
+-include $(shell curl -s -H 'Authorization: token ${GITHUB_TOKEN}' -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/stolostron/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
 else
 -include vbh/.build-harness-vendorized
 endif
@@ -55,7 +55,7 @@ test:  dependencies
 	go test -v  -coverprofile=coverage.out  ./...
 
 dependencies:
-	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/
+	curl -sL https://github.com/kubernetes-sigs/kubebuilder/releases/download/v2.0.0-alpha.1/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH}.tar.gz | tar -xz -C /tmp/
 	sudo mv /tmp/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH} /usr/local/kubebuilder
 	go mod tidy
 	go mod download

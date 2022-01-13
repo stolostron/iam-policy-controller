@@ -55,7 +55,7 @@ test:  dependencies
 	go test -v  -coverprofile=coverage.out  ./...
 
 dependencies:
-	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/
+	curl -sL https://github.com/kubernetes-sigs/kubebuilder/releases/download/v2.0.0-alpha.1/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH}.tar.gz | tar -xz -C /tmp/
 	sudo mv /tmp/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH} /usr/local/kubebuilder
 	go mod tidy
 	go mod download

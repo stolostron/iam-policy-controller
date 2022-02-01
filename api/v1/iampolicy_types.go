@@ -66,7 +66,8 @@ type IamPolicySpec struct {
 	// +kubebuilder:validation:MinLength=1
 	ClusterRole string `json:"clusterRole,omitempty"`
 
-	// low, medium, or high
+	// low, medium, high, or critical
+	// +kubebuilder:validation:Enum=low;Low;medium;Medium;high;High;critical;Critical
 	Severity string `json:"severity,omitempty"`
 }
 

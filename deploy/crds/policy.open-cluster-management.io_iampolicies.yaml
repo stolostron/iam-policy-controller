@@ -81,7 +81,16 @@ spec:
                 - inform
                 type: string
               severity:
-                description: low, medium, or high
+                description: low, medium, high, or critical
+                enum:
+                - low
+                - Low
+                - medium
+                - Medium
+                - high
+                - High
+                - critical
+                - Critical
                 type: string
             type: object
           status:

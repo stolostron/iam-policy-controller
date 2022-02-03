@@ -5,20 +5,10 @@
 # Copyright (c) 2020 Red Hat, Inc.
 # Copyright Contributors to the Open Cluster Management project
 
-# Git vars
-GITHUB_USER ?=
-GITHUB_TOKEN ?=
-# Only use git commands if it exists
-ifdef GIT
-GIT_COMMIT      = $(shell git rev-parse --short HEAD)
-GIT_REMOTE_URL  = $(shell git config --get remote.origin.url)
-endif
-
 # Go build settings
+export PATH=$(shell echo $$PATH):$(PWD)/bin
 GOARCH = $(shell go env GOARCH)
 GOOS = $(shell go env GOOS)
-
-OPERATOR_SDK_PATH ?= $(shell which operator-sdk)
 
 # Handle KinD configuration
 KIND_NAME ?= test-managed
@@ -40,24 +30,7 @@ REGISTRY ?= quay.io/stolostron
 TAG ?= latest
 IMAGE_NAME_AND_VERSION ?= $(REGISTRY)/$(IMG)
 
-# CICD BUILD HARNESS
-####################
-GITHUB_USER := $(shell echo $(GITHUB_USER) | sed 's/@/%40/g')
-
-USE_VENDORIZED_BUILD_HARNESS ?=
-export PATH=$(shell echo $$PATH):$(PWD)/bin
-
-ifndef USE_VENDORIZED_BUILD_HARNESS
--include $(shell curl -s -H 'Accept: application/vnd.github.v4.raw' -L https://api.github.com/repos/stolostron/build-harness-extensions/contents/templates/Makefile.build-harness-bootstrap -o .build-harness-bootstrap; echo .build-harness-bootstrap)
-else
--include vbh/.build-harness-vendorized
-endif
-
 include build/common/Makefile.common.mk
-
-.PHONY: default
-default::
-	@echo "Build Harness Bootstrapped"
 
 .PHONY: all lint test dependencies build image run deploy install fmt vet generate \
 fmt vet generate go-coverage fmt-dependencies lint-dependencies
@@ -81,9 +54,7 @@ test-dependencies:
 	sudo mv /tmp/kubebuilder_$(KBVERSION)_$(GOOS)_$(GOARCH) /usr/local/kubebuilder
 	export PATH=$PATH:/usr/local/kubebuilder/bin
 
-dependencies: dependencies-go
-	curl -sL https://go.kubebuilder.io/dl/2.0.0-alpha.1/${GOOS}/${GOARCH} | tar -xz -C /tmp/
-	sudo mv /tmp/kubebuilder_2.0.0-alpha.1_${GOOS}_${GOARCH} /usr/local/kubebuilder
+dependencies: dependencies-go test-dependencies
 
 dependencies-go:
 	go mod tidy

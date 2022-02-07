@@ -37,13 +37,36 @@ fmt vet generate go-coverage fmt-dependencies lint-dependencies
 
 all: test
 
+############################################################
+# format section
+############################################################
+
+# Run go fmt against code
+fmt-dependencies:
+	$(call go-get-tool,$(PWD)/bin/gci,github.com/daixiang0/gci@v0.2.9)
+	$(call go-get-tool,$(PWD)/bin/gofumpt,mvdan.cc/gofumpt@v0.2.0)
+
+fmt: fmt-dependencies
+	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofmt -s -w
+	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofumpt -l -w
+	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gci -w -local "$(shell cat go.mod | head -1 | cut -d " " -f 2)"
+
+# Run go vet against code
+vet:
+	go vet ./...
+
+############################################################
+# lint
+############################################################
+
 lint-dependencies:
 	$(call go-get-tool,$(PWD)/bin/golangci-lint,github.com/golangci/golangci-lint/cmd/golangci-lint@v1.41.1)
 
 lint: lint-dependencies lint-all
 
-copyright-check:
-	./build/copyright-check.sh $(TRAVIS_BRANCH) $(TRAVIS_PULL_REQUEST_BRANCH)
+############################################################
+# unit test
+############################################################
 
 # Run tests
 test:
@@ -53,6 +76,11 @@ test-dependencies:
 	curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v$(KBVERSION)/kubebuilder_$(KBVERSION)_$(GOOS)_$(GOARCH).tar.gz | tar -xz -C /tmp/
 	sudo mv /tmp/kubebuilder_$(KBVERSION)_$(GOOS)_$(GOARCH) /usr/local/kubebuilder
 	export PATH=$PATH:/usr/local/kubebuilder/bin
+
+
+############################################################
+# build
+############################################################
 
 dependencies: dependencies-go test-dependencies
 
@@ -71,6 +99,10 @@ build-images:
 run: generate fmt vet
 	go run ./main.go
 
+############################################################
+# deploy
+############################################################
+
 # Install CRDs into a cluster
 install: manifests
 	kubectl apply -f deploy/crds
@@ -85,21 +117,10 @@ create-ns:
 	@kubectl create namespace $(CONTROLLER_NAMESPACE) || true
 	@kubectl create namespace $(WATCH_NAMESPACE) || true
 
-# Run go fmt against code
-fmt-dependencies:
-	$(call go-get-tool,$(PWD)/bin/gci,github.com/daixiang0/gci@v0.2.9)
-	$(call go-get-tool,$(PWD)/bin/gofumpt,mvdan.cc/gofumpt@v0.2.0)
+############################################################
+# e2e test
+############################################################
 
-fmt: fmt-dependencies
-	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofmt -s -w
-	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofumpt -l -w
-	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gci -w -local "$(shell cat go.mod | head -1 | cut -d " " -f 2)"
-
-# Run go vet against code
-vet:
-	go vet ./...
-
-# e2e test section
 .PHONY: kind-bootstrap-cluster
 kind-bootstrap-cluster: kind-create-cluster install-crds kind-deploy-controller install-resources
 

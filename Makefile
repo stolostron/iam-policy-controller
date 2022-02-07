@@ -14,7 +14,6 @@ GOOS = $(shell go env GOOS)
 KIND_NAME ?= test-managed
 KIND_NAMESPACE ?= open-cluster-management-agent-addon
 KIND_VERSION ?= latest
-KBVERSION := 2.3.1
 MANAGED_CLUSTER_NAME ?= managed
 WATCH_NAMESPACE ?= $(MANAGED_CLUSTER_NAME)
 ifneq ($(KIND_VERSION), latest)
@@ -67,16 +66,24 @@ lint: lint-dependencies lint-all
 ############################################################
 # unit test
 ############################################################
+KUBEBUILDER_DIR = /usr/local/kubebuilder/bin
+KBVERSION = 3.2.0
+K8S_VERSION = 1.21.2
 
 # Run tests
 test:
 	go test -v -coverprofile=coverage.out  ./...
 
 test-dependencies:
-	curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v$(KBVERSION)/kubebuilder_$(KBVERSION)_$(GOOS)_$(GOARCH).tar.gz | tar -xz -C /tmp/
-	sudo mv /tmp/kubebuilder_$(KBVERSION)_$(GOOS)_$(GOARCH) /usr/local/kubebuilder
-	export PATH=$PATH:/usr/local/kubebuilder/bin
-
+	@if (ls $(KUBEBUILDER_DIR)/*); then \
+		echo "^^^ Files found in $(KUBEBUILDER_DIR). Skipping installation."; exit 1; \
+	else \
+		echo "^^^ Kubebuilder binaries not found. Installing Kubebuilder binaries."; \
+	fi
+	sudo mkdir -p $(KUBEBUILDER_DIR)
+	sudo curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v$(KBVERSION)/kubebuilder_$(GOOS)_$(GOARCH) -o $(KUBEBUILDER_DIR)/kubebuilder
+	sudo chmod +x $(KUBEBUILDER_DIR)/kubebuilder
+	curl -L "https://go.kubebuilder.io/test-tools/$(K8S_VERSION)/$(GOOS)/$(GOARCH)" | sudo tar xz --strip-components=2 -C $(KUBEBUILDER_DIR)/
 
 ############################################################
 # build

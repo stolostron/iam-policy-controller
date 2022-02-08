@@ -14,7 +14,6 @@ GOOS = $(shell go env GOOS)
 KIND_NAME ?= test-managed
 KIND_NAMESPACE ?= open-cluster-management-agent-addon
 KIND_VERSION ?= latest
-KBVERSION := 2.3.1
 MANAGED_CLUSTER_NAME ?= managed
 WATCH_NAMESPACE ?= $(MANAGED_CLUSTER_NAME)
 ifneq ($(KIND_VERSION), latest)
@@ -37,22 +36,58 @@ fmt vet generate go-coverage fmt-dependencies lint-dependencies
 
 all: test
 
+############################################################
+# format section
+############################################################
+
+# Run go fmt against code
+fmt-dependencies:
+	$(call go-get-tool,$(PWD)/bin/gci,github.com/daixiang0/gci@v0.2.9)
+	$(call go-get-tool,$(PWD)/bin/gofumpt,mvdan.cc/gofumpt@v0.2.0)
+
+fmt: fmt-dependencies
+	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofmt -s -w
+	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofumpt -l -w
+	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gci -w -local "$(shell cat go.mod | head -1 | cut -d " " -f 2)"
+
+# Run go vet against code
+vet:
+	go vet ./...
+
+############################################################
+# lint
+############################################################
+
 lint-dependencies:
 	$(call go-get-tool,$(PWD)/bin/golangci-lint,github.com/golangci/golangci-lint/cmd/golangci-lint@v1.41.1)
 
 lint: lint-dependencies lint-all
 
-copyright-check:
-	./build/copyright-check.sh $(TRAVIS_BRANCH) $(TRAVIS_PULL_REQUEST_BRANCH)
+############################################################
+# unit test
+############################################################
+KUBEBUILDER_DIR = /usr/local/kubebuilder/bin
+KBVERSION = 3.2.0
+K8S_VERSION = 1.21.2
 
 # Run tests
 test:
 	go test -v -coverprofile=coverage.out  ./...
 
 test-dependencies:
-	curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v$(KBVERSION)/kubebuilder_$(KBVERSION)_$(GOOS)_$(GOARCH).tar.gz | tar -xz -C /tmp/
-	sudo mv /tmp/kubebuilder_$(KBVERSION)_$(GOOS)_$(GOARCH) /usr/local/kubebuilder
-	export PATH=$PATH:/usr/local/kubebuilder/bin
+	@if (ls $(KUBEBUILDER_DIR)/*); then \
+		echo "^^^ Files found in $(KUBEBUILDER_DIR). Skipping installation."; exit 1; \
+	else \
+		echo "^^^ Kubebuilder binaries not found. Installing Kubebuilder binaries."; \
+	fi
+	sudo mkdir -p $(KUBEBUILDER_DIR)
+	sudo curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v$(KBVERSION)/kubebuilder_$(GOOS)_$(GOARCH) -o $(KUBEBUILDER_DIR)/kubebuilder
+	sudo chmod +x $(KUBEBUILDER_DIR)/kubebuilder
+	curl -L "https://go.kubebuilder.io/test-tools/$(K8S_VERSION)/$(GOOS)/$(GOARCH)" | sudo tar xz --strip-components=2 -C $(KUBEBUILDER_DIR)/
+
+############################################################
+# build
+############################################################
 
 dependencies: dependencies-go test-dependencies
 
@@ -71,6 +106,10 @@ build-images:
 run: generate fmt vet
 	go run ./main.go
 
+############################################################
+# deploy
+############################################################
+
 # Install CRDs into a cluster
 install: manifests
 	kubectl apply -f deploy/crds
@@ -85,21 +124,10 @@ create-ns:
 	@kubectl create namespace $(CONTROLLER_NAMESPACE) || true
 	@kubectl create namespace $(WATCH_NAMESPACE) || true
 
-# Run go fmt against code
-fmt-dependencies:
-	$(call go-get-tool,$(PWD)/bin/gci,github.com/daixiang0/gci@v0.2.9)
-	$(call go-get-tool,$(PWD)/bin/gofumpt,mvdan.cc/gofumpt@v0.2.0)
+############################################################
+# e2e test
+############################################################
 
-fmt: fmt-dependencies
-	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofmt -s -w
-	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofumpt -l -w
-	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gci -w -local "$(shell cat go.mod | head -1 | cut -d " " -f 2)"
-
-# Run go vet against code
-vet:
-	go vet ./...
-
-# e2e test section
 .PHONY: kind-bootstrap-cluster
 kind-bootstrap-cluster: kind-create-cluster install-crds kind-deploy-controller install-resources
 

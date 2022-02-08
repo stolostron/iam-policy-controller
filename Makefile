@@ -10,6 +10,9 @@ export PATH=$(shell echo $$PATH):$(PWD)/bin
 GOARCH = $(shell go env GOARCH)
 GOOS = $(shell go env GOOS)
 
+TESTARGS_DEFAULT := -v
+export TESTARGS ?= $(TESTARGS_DEFAULT)
+
 # Handle KinD configuration
 KIND_NAME ?= test-managed
 KIND_NAMESPACE ?= open-cluster-management-agent-addon
@@ -21,6 +24,11 @@ ifneq ($(KIND_VERSION), latest)
 else
 	KIND_ARGS =
 endif
+# Fetch Ginkgo/Gomega versions from go.mod
+GINKGO_VERSION := $(shell awk '/github.com\/onsi\/ginkgo\/v2/ {print $$2}' go.mod)
+GOMEGA_VERSION := $(shell awk '/github.com\/onsi\/gomega/ {print $$2}' go.mod)
+# Test coverage threshold
+export COVERAGE_MIN ?= 58
 
 # Image URL to use all building/pushing image targets;
 # Use your own docker registry and image name for dev/test by overridding the IMG and REGISTRY environment variable.
@@ -28,6 +36,10 @@ IMG ?= $(shell cat COMPONENT_NAME 2> /dev/null)
 REGISTRY ?= quay.io/stolostron
 TAG ?= latest
 IMAGE_NAME_AND_VERSION ?= $(REGISTRY)/$(IMG)
+
+# Github host to use for checking the source tree;
+# Override this variable ue with your own value if you're working on forked repo.
+GIT_HOST ?= github.com/stolostron
 
 include build/common/Makefile.common.mk
 
@@ -69,10 +81,14 @@ lint: lint-dependencies lint-all
 KUBEBUILDER_DIR = /usr/local/kubebuilder/bin
 KBVERSION = 3.2.0
 K8S_VERSION = 1.21.2
+GOSEC = $(shell pwd)/bin/gosec
+GOSEC_VERSION = 2.9.6
 
-# Run tests
 test:
-	go test -v -coverprofile=coverage.out  ./...
+	go test -v $(TESTARGS)  ./...
+
+test-coverage: TESTARGS = -json -cover -covermode=atomic -coverprofile=coverage_unit.out
+test-coverage: test
 
 test-dependencies:
 	@if (ls $(KUBEBUILDER_DIR)/*); then \
@@ -84,6 +100,13 @@ test-dependencies:
 	sudo curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v$(KBVERSION)/kubebuilder_$(GOOS)_$(GOARCH) -o $(KUBEBUILDER_DIR)/kubebuilder
 	sudo chmod +x $(KUBEBUILDER_DIR)/kubebuilder
 	curl -L "https://go.kubebuilder.io/test-tools/$(K8S_VERSION)/$(GOOS)/$(GOARCH)" | sudo tar xz --strip-components=2 -C $(KUBEBUILDER_DIR)/
+
+$(GOSEC):
+	curl -L https://github.com/securego/gosec/releases/download/v$(GOSEC_VERSION)/gosec_$(GOSEC_VERSION)_$(GOOS)_$(GOARCH).tar.gz | tar -xz -C /tmp/
+	sudo mv /tmp/gosec $(GOSEC)
+
+gosec-scan: $(GOSEC)
+	$(GOSEC) -fmt sonarqube -out gosec.json -no-fail -exclude-dir=.go ./...
 
 ############################################################
 # build
@@ -104,7 +127,7 @@ build-images:
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
-	go run ./main.go
+	WATCH_NAMESPACE=$(WATCH_NAMESPACE) go run ./main.go --leader-elect=false
 
 ############################################################
 # deploy
@@ -137,23 +160,17 @@ kind-bootstrap-cluster-dev: kind-create-cluster install-crds install-resources
 kind-deploy-controller: install-crds
 	@echo installing $(IMG)
 	kubectl create ns $(KIND_NAMESPACE) || true
-	kubectl apply -f deploy/ -n $(KIND_NAMESPACE)
+	kubectl apply -f deploy/operator.yaml -n $(KIND_NAMESPACE)
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"env\":[{\"name\":\"WATCH_NAMESPACE\",\"value\":\"$(WATCH_NAMESPACE)\"}]}]}}}}"
 
 deploy-controller: kind-deploy-controller
 
-# Don't use the --enable-lease flag which is on by default in the Deployment defintion in the
-# deploy/operator.yaml file.
-kind-deploy-controller-dev:
+kind-deploy-controller-dev: kind-deploy-controller
 	@echo Pushing image to KinD cluster
 	kind load docker-image $(REGISTRY)/$(IMG):$(TAG) --name $(KIND_NAME)
-	@echo Installing $(IMG)
-	kubectl create ns $(KIND_NAMESPACE)
-	kubectl apply -f deploy/operator.yaml -n $(KIND_NAMESPACE)
 	@echo "Patch deployment image"
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"imagePullPolicy\":\"Never\"}]}}}}"
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"image\":\"$(REGISTRY)/$(IMG):$(TAG)\",\"args\":[]}]}}}}"
-	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"env\":[{\"name\":\"WATCH_NAMESPACE\",\"value\":\"$(WATCH_NAMESPACE)\"}]}]}}}}"
 	kubectl rollout status -n $(KIND_NAMESPACE) deployment $(IMG) --timeout=180s
 
 kind-create-cluster:
@@ -173,11 +190,23 @@ install-resources:
 	kubectl create ns $(WATCH_NAMESPACE)
 
 e2e-test:
-	${GOPATH}/bin/ginkgo -v --failFast --slowSpecThreshold=10 test/e2e
+	$(GOPATH)/bin/ginkgo -v --fail-fast --slow-spec-threshold=10s $(E2E_TEST_ARGS) test/e2e
+
+e2e-test-coverage: E2E_TEST_ARGS = --json-report=report_e2e.json --output-dir=.
+e2e-test-coverage: e2e-test
 
 e2e-dependencies:
-	go get github.com/onsi/ginkgo/ginkgo
-	go get github.com/onsi/gomega/...
+	go get github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION)
+	go get github.com/onsi/gomega/...@$(GOMEGA_VERSION)
+
+e2e-build-instrumented:
+	go test -covermode=atomic -coverpkg=$(GIT_HOST)/$(IMG)/... -c -tags e2e ./ -o build/_output/bin/$(IMG)-instrumented
+
+e2e-run-instrumented:
+	WATCH_NAMESPACE="$(WATCH_NAMESPACE)" ./build/_output/bin/$(IMG)-instrumented -test.run "^TestRunMain$$" -test.coverprofile=coverage_e2e.out &>/dev/null &
+
+e2e-stop-instrumented:
+	ps -ef | grep '$(IMG)' | grep -v grep | awk '{print $$2}' | xargs kill
 
 e2e-debug:
 	kubectl get all -n $(KIND_NAMESPACE)
@@ -225,3 +254,18 @@ GOBIN=$(PWD)/bin go get $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
+
+############################################################
+# test coverage
+############################################################
+GOCOVMERGE = $(shell pwd)/bin/gocovmerge
+coverage-dependencies:
+	$(call go-get-tool,$(GOCOVMERGE),github.com/wadey/gocovmerge)
+
+COVERAGE_FILE = coverage.out
+coverage-merge: coverage-dependencies
+	@echo Merging the coverage reports into $(COVERAGE_FILE)
+	$(GOCOVMERGE) $(PWD)/coverage_* > $(COVERAGE_FILE)
+
+coverage-verify:
+	./build/common/scripts/coverage_calc.sh

@@ -9,7 +9,9 @@ kubeconfig_managed
 !vbh/build-harness
 !vbh/build-harness-extensions
 .vscode/launch.json
-cover.out
-coverage.out
+*.out
+report.json
+report_*.json
+gosec.json
 
 bin/

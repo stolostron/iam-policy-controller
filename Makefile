@@ -10,6 +10,9 @@ export PATH=$(shell echo $$PATH):$(PWD)/bin
 GOARCH = $(shell go env GOARCH)
 GOOS = $(shell go env GOOS)
 
+TESTARGS_DEFAULT := -v
+export TESTARGS ?= $(TESTARGS_DEFAULT)
+
 # Handle KinD configuration
 KIND_NAME ?= test-managed
 KIND_NAMESPACE ?= open-cluster-management-agent-addon
@@ -24,6 +27,8 @@ endif
 # Fetch Ginkgo/Gomega versions from go.mod
 GINKGO_VERSION := $(shell awk '/github.com\/onsi\/ginkgo\/v2/ {print $$2}' go.mod)
 GOMEGA_VERSION := $(shell awk '/github.com\/onsi\/gomega/ {print $$2}' go.mod)
+# Test coverage threshold
+export COVERAGE_MIN ?= 58
 
 # Image URL to use all building/pushing image targets;
 # Use your own docker registry and image name for dev/test by overridding the IMG and REGISTRY environment variable.
@@ -73,9 +78,11 @@ KUBEBUILDER_DIR = /usr/local/kubebuilder/bin
 KBVERSION = 3.2.0
 K8S_VERSION = 1.21.2
 
-# Run tests
 test:
-	go test -v -coverprofile=coverage.out  ./...
+	go test -v $(TESTARGS)  ./...
+
+test-coverage: TESTARGS = -json -cover -covermode=atomic -coverprofile=coverage_unit.out
+test-coverage: test
 
 test-dependencies:
 	@if (ls $(KUBEBUILDER_DIR)/*); then \
@@ -170,7 +177,10 @@ install-resources:
 	kubectl create ns $(WATCH_NAMESPACE)
 
 e2e-test:
-	${GOPATH}/bin/ginkgo -v --failFast --slowSpecThreshold=10 test/e2e
+	$(GOPATH)/bin/ginkgo -v --fail-fast --slow-spec-threshold=10s $(E2E_TEST_ARGS) test/e2e
+
+e2e-test-coverage: E2E_TEST_ARGS = --json-report=report_e2e.json --output-dir=.
+e2e-test-coverage: e2e-test
 
 e2e-dependencies:
 	go get github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION)
@@ -222,3 +232,18 @@ GOBIN=$(PWD)/bin go get $(2) ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
+
+############################################################
+# test coverage
+############################################################
+GOCOVMERGE = $(shell pwd)/bin/gocovmerge
+coverage-dependencies:
+	$(call go-get-tool,$(GOCOVMERGE),github.com/wadey/gocovmerge)
+
+COVERAGE_FILE = coverage.out
+coverage-merge: coverage-dependencies
+	@echo Merging the coverage reports into $(COVERAGE_FILE)
+	$(GOCOVMERGE) $(PWD)/coverage_* > $(COVERAGE_FILE)
+
+coverage-verify:
+	./build/common/scripts/coverage_calc.sh

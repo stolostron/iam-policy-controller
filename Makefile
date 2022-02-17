@@ -85,7 +85,7 @@ GOSEC = $(shell pwd)/bin/gosec
 GOSEC_VERSION = 2.9.6
 
 test:
-	go test -v $(TESTARGS)  ./...
+	go test $(TESTARGS)  ./...
 
 test-coverage: TESTARGS = -json -cover -covermode=atomic -coverprofile=coverage_unit.out
 test-coverage: test

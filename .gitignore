@@ -3,6 +3,7 @@ build-harness
 build-harness-extensions
 build/_output
 kubeconfig_managed
+vendor/
 
 # override build harness vendoring
 !vbh/.build-harness-vendorized

@@ -132,7 +132,6 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 	// Fetch the IamPolicy instance
 	instance := &iampolicyv1.IamPolicy{}
 
-	//nolint:contextcheck
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -155,9 +154,8 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 		}
 
 		if updateNeeded {
-			//nolint:contextcheck
 			if err := r.Update(context.Background(), instance); err != nil {
-				// return nil here is intent
+				// return nil here is intentional
 				//nolint:nilerr
 				return reconcile.Result{Requeue: true}, nil
 			}
@@ -347,7 +345,7 @@ func getGroupMembership(group string) ([]string, error) {
 	if err != nil || !found {
 		log.Info(fmt.Sprintf("The group %s was in an unexpected format", group))
 
-		// return nil here is intent
+		// returning nil here is intentional
 		//nolint:nilerr
 		return []string{}, nil
 	}
@@ -519,8 +517,7 @@ func updatePolicyStatus(policies map[string]*iampolicyv1.IamPolicy) (*iampolicyv
 		}
 	}
 
-	// return nil here is intent
-	//nolint:nilnil
+	// return nil here is intentional
 	return nil, nil
 }
 

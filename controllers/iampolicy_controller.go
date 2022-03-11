@@ -98,8 +98,6 @@ func Initialize(
 	NamespaceWatched = namespace
 
 	EventOnParent = strings.ToLower(eventParent)
-
-	return nil
 }
 
 // IamPolicyReconciler reconciles a IamPolicy object

@@ -6,7 +6,7 @@
 # Copyright Contributors to the Open Cluster Management project
 
 # Go build settings
-export PATH=$(shell echo $$PATH):$(PWD)/bin
+export PATH := $(PWD)/bin:$(PATH)
 GOARCH = $(shell go env GOARCH)
 GOOS = $(shell go env GOOS)
 

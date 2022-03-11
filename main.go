@@ -31,7 +31,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
@@ -40,10 +39,9 @@ import (
 	"github.com/stolostron/iam-policy-controller/version"
 )
 
-// Change below variables to serve metrics on different host or port.
 var (
-	log    = logf.Log.WithName("cmd")
-	scheme = k8sruntime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
+	scheme   = k8sruntime.NewScheme()
 )
 
 func init() {
@@ -54,14 +52,14 @@ func init() {
 }
 
 func printVersion() {
-	log.Info(fmt.Sprintf("Operator Version: %s", version.Version))
-	log.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
-	log.Info(fmt.Sprintf("Go OS/Arch: %s/%s", runtime.GOOS, runtime.GOARCH))
+	setupLog.Info("Using", "OperatorVersion", version.Version, "GoVersion", runtime.Version(),
+		"GOOS", runtime.GOOS, "GOARCH", runtime.GOARCH)
 }
 
 func main() {
-	// Add flags registered by imported packages (e.g. glog and
-	// controller-runtime)
+	opts := zap.Options{}
+	opts.BindFlags(flag.CommandLine)
+	// Add flags registered by imported packages (e.g. glog and controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
 	var clusterName, namespace, eventOnParent, hubConfigSecretNs, hubConfigSecretName, metricsAddr, probeAddr string
@@ -101,13 +99,13 @@ func main() {
 
 	pflag.Parse()
 
-	logf.SetLogger(zap.New())
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	printVersion()
 
 	namespace, err := common.GetWatchNamespace()
 	if err != nil {
-		log.Error(err, "Failed to get watch namespace")
+		setupLog.Error(err, "Failed to get watch namespace")
 		os.Exit(1)
 	}
 
@@ -136,7 +134,7 @@ func main() {
 	// Create a new manager to provide shared dependencies and start components
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
-		log.Error(err, "unable to start manager")
+		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
 	}
 
@@ -145,20 +143,20 @@ func main() {
 		Recorder: mgr.GetEventRecorderFor("iampolicy-controller"),
 		Scheme:   mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		log.Error(err, "unable to create controller", "controller", "IamPolicy")
+		setupLog.Error(err, "unable to create controller", "controller", "IamPolicy")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder
 
-	log.Info("Registering Components.")
+	setupLog.Info("Registering Components.")
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		log.Error(err, "unable to set up health check")
+		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)
 	}
 
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		log.Error(err, "unable to set up ready check")
+		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
 
@@ -168,11 +166,8 @@ func main() {
 	dynamicClient := dynamic.NewForConfigOrDie(mgr.GetConfig())
 	common.Initialize(&generatedClient, mgr.GetConfig())
 
-	/* #nosec G104 */
-	iniResult := controllers.Initialize(&generatedClient, &dynamicClient, mgr, clusterName, namespace, eventOnParent)
-	if iniResult != nil {
-		panic(iniResult)
-	}
+	controllers.Initialize(&generatedClient, &dynamicClient, mgr, clusterName, namespace, eventOnParent)
+
 	// PeriodicallyExecIamPolicies is the go-routine that periodically checks the policies
 	// and does the needed work to make sure the desired state is achieved
 	go controllers.PeriodicallyExecIamPolicies(frequency)
@@ -181,15 +176,19 @@ func main() {
 		operatorNs, err := common.GetOperatorNamespace()
 		if err != nil {
 			if errors.Is(err, common.ErrNoNamespace) || errors.Is(err, common.ErrRunLocal) {
-				log.Info("Skipping lease; not running in a cluster.")
+				setupLog.Info("Skipping lease; not running in a cluster.")
 			} else {
-				log.Error(err, "Failed to get operator namespace")
+				setupLog.Error(err, "Failed to get operator namespace")
 				os.Exit(1)
 			}
 		} else {
-			hubCfg, _ := common.LoadHubConfig(hubConfigSecretNs, hubConfigSecretName)
+			setupLog.Info(fmt.Sprintf("Found operator namespace %s.", operatorNs))
+			hubCfg, err := common.LoadHubConfig(hubConfigSecretNs, hubConfigSecretName)
+			if err != nil {
+				setupLog.Error(err, "Unable to load hub kubeconfig, setting up leaseUpdater anyway")
+			}
 
-			log.Info("Starting lease controller to report status")
+			setupLog.Info("Starting lease controller to report status")
 			leaseUpdater := lease.NewLeaseUpdater(
 				generatedClient,
 				"iam-policy-controller",
@@ -199,13 +198,13 @@ func main() {
 			go leaseUpdater.Start(context.TODO())
 		}
 	} else {
-		log.Info("Status reporting is not enabled")
+		setupLog.Info("Status reporting is not enabled")
 	}
 
-	log.Info("starting manager")
+	setupLog.Info("starting manager")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		log.Error(err, "problem running manager")
+		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
 }

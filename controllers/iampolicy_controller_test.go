@@ -38,11 +38,6 @@ var iamPolicy = iampolicyv1.IamPolicy{
 	},
 }
 
-func TestInitialize(t *testing.T) {
-	result := Initialize(nil, nil, nil, "test", "test", "test")
-	assert.Nil(t, result)
-}
-
 func TestReconcile(t *testing.T) {
 	var (
 		name      = "foo"

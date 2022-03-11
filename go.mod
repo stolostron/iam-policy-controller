@@ -3,7 +3,6 @@ module github.com/stolostron/iam-policy-controller
 go 1.17
 
 require (
-	github.com/golang/glog v1.0.0
 	github.com/onsi/ginkgo/v2 v2.1.3
 	github.com/onsi/gomega v1.18.1
 	github.com/spf13/pflag v1.0.5

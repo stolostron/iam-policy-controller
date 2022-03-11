@@ -11,8 +11,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
-
-	"github.com/golang/glog"
 )
 
 type RunModeType string
@@ -27,13 +25,14 @@ const (
 	watchNamespaceEnvVar = "WATCH_NAMESPACE"
 )
 
-// ErrNoNamespace indicates that a namespace could not be found for the current
-// environment
-var ErrNoNamespace = fmt.Errorf("namespace not found for current environment")
-
-// ErrRunLocal indicates that the operator is set to run in local mode (this error
-// is returned by functions that only work on operators running in cluster mode)
-var ErrRunLocal = fmt.Errorf("operator run mode forced to local")
+var (
+	// ErrNoNamespace indicates that a namespace could not be found for the current
+	// environment
+	ErrNoNamespace = fmt.Errorf("namespace not found for current environment")
+	// ErrRunLocal indicates that the operator is set to run in local mode (this error
+	// is returned by functions that only work on operators running in cluster mode)
+	ErrRunLocal = fmt.Errorf("operator run mode forced to local")
+)
 
 func isRunModeLocal() bool {
 	return os.Getenv(ForceRunModeEnv) == string(LocalRunMode)
@@ -65,7 +64,6 @@ func GetOperatorNamespace() (string, error) {
 	}
 
 	ns := strings.TrimSpace(string(nsBytes))
-	glog.V(1).Info("Found namespace", "Namespace", ns)
 
 	return ns, nil
 }

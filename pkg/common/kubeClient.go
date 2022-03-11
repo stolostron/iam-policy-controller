@@ -13,20 +13,20 @@ import (
 	base64 "encoding/base64"
 	"regexp"
 
-	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// KubeClient a k8s client used for k8s native resources
-var KubeClient *kubernetes.Interface
+var (
+	// KubeClient is a k8s client used for k8s native resources
+	KubeClient *kubernetes.Interface
+	// KubeConfig is the given kubeconfig at startup
+	KubeConfig *rest.Config
 
-// KubeConfig is the given kubeconfig at startup
-var KubeConfig *rest.Config
-
-var HubConfig *rest.Config
+	HubConfig *rest.Config
+)
 
 // Initialize to initialize some controller variables
 func Initialize(kClient *kubernetes.Interface, cfg *rest.Config) {
@@ -40,8 +40,6 @@ func LoadHubConfig(namespace string, secretname string) (*rest.Config, error) {
 
 		hubSecret, err := secretsClient.Get(context.TODO(), secretname, metav1.GetOptions{})
 		if err != nil {
-			glog.Errorf("Error Getting HubConfig Secret:  %v", err)
-
 			return nil, err
 		}
 
@@ -57,8 +55,6 @@ func LoadHubConfig(namespace string, secretname string) (*rest.Config, error) {
 
 		HubConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(secretkconfig))
 		if err != nil {
-			glog.Errorf("Error getting Rest config for Hub:  %v", err)
-
 			return nil, err
 		}
 	}

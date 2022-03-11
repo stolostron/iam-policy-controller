@@ -18,19 +18,6 @@ import (
 	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
 )
 
-/*
-	apiVersion: mcm.ibm.com/v1alpha1
-		kind: IamPolicy
-		metadata:
-			name: GRC-policy
-		spec:
-			namespaces:
-				include: ["default"]
-				exclude: ["kube*"]
-			remediationAction: Inform
-			conditions:
-				ownership: [ReplicaSet, Deployment, DeamonSet, ReplicationController]
-*/
 var plc = &iampolicyv1.IamPolicy{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "testPolicy",

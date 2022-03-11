@@ -13,7 +13,6 @@ import (
 	base64 "encoding/base64"
 	"regexp"
 
-	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -41,8 +40,6 @@ func LoadHubConfig(namespace string, secretname string) (*rest.Config, error) {
 
 		hubSecret, err := secretsClient.Get(context.TODO(), secretname, metav1.GetOptions{})
 		if err != nil {
-			glog.Errorf("Error Getting HubConfig Secret:  %v", err)
-
 			return nil, err
 		}
 
@@ -58,8 +55,6 @@ func LoadHubConfig(namespace string, secretname string) (*rest.Config, error) {
 
 		HubConfig, err = clientcmd.RESTConfigFromKubeConfig([]byte(secretkconfig))
 		if err != nil {
-			glog.Errorf("Error getting Rest config for Hub:  %v", err)
-
 			return nil, err
 		}
 	}

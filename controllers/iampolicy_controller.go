@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	policiesv1 "github.com/stolostron/governance-policy-propagator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
@@ -30,7 +29,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -90,7 +88,7 @@ func Initialize(
 	mgr manager.Manager,
 	clsName,
 	namespace,
-	eventParent string) (err error) {
+	eventParent string) {
 	KubeClient = kClient
 	KubeDynamicClient = kDynamicClient
 	PlcChan = make(chan *iampolicyv1.IamPolicy, 100) // buffering up to 100 policies for update
@@ -207,6 +205,7 @@ func ensureDefaultLabel(instance *iampolicyv1.IamPolicy) (updateNeeded bool) {
 
 // PeriodicallyExecIamPolicies always check status - let this be the only function in the controller
 func PeriodicallyExecIamPolicies(freq uint) {
+	log.V(3).Info("Entered PeriodicallyExecIamPolicies")
 	var plcToUpdateMap map[string]*iampolicyv1.IamPolicy
 
 	for {
@@ -219,15 +218,15 @@ func PeriodicallyExecIamPolicies(freq uint) {
 		// currently no support for perNamespace rolebindings
 		update, err := checkUnNamespacedPolicies(plcToUpdateMap)
 		if err != nil {
-			glog.Errorf("Error checking un-namespaced policies, additional info %v \n", err)
+			log.Error(err, "Error checking un-namespaced policies")
 		}
 
 		if update {
 			// update status of all policies that changed:
 			faultyPlc, err := updatePolicyStatus(plcToUpdateMap)
 			if err != nil {
-				glog.Errorf("reason: policy update error, subject: policy/%v, namespace: %v, according to "+
-					"policy: %v, additional-info: %v\n", faultyPlc.Name, faultyPlc.Namespace, faultyPlc.Name, err)
+				log.Error(err, "Unable to update policy status",
+					"Name", faultyPlc.Name, "Namespace", faultyPlc.Namespace)
 			}
 		}
 
@@ -256,8 +255,7 @@ func checkUnNamespacedPolicies(
 		context.TODO(),
 		metav1.ListOptions{})
 	if err != nil {
-		glog.Errorf("reason: communication error, subject: k8s API server, namespace: all, "+
-			"according to policy: none, additional-info: %v\n", err)
+		log.Error(err, "Error listing ClusterRoleBindings")
 
 		return false, err
 	}
@@ -283,11 +281,11 @@ func checkUnNamespacedPolicies(
 		if err != nil {
 			queryErrEncountered = true
 
-			glog.Infof("An error was encountered when getting the user list, "+
-				"so the policy %s can only go from no status or compliant to non-compliant", policy.Name)
+			log.Info("Error listing users bound to ClusterRole.", "Name", policy.Name, "ClusterRole", clusterRoleRef)
 		}
 
-		glog.Infof("The user list was retrieved and %d were found", clusterLevelUsers)
+		log.Info(fmt.Sprintf("Found %d users bound to ClusterRole.", clusterLevelUsers),
+			"Name", policy.Name, "ClusterRole", clusterRoleRef)
 
 		if policy.Spec.MaxClusterRoleBindingUsers < clusterLevelUsers && policy.Spec.MaxClusterRoleBindingUsers >= 0 {
 			userViolationCount = clusterLevelUsers - policy.Spec.MaxClusterRoleBindingUsers
@@ -304,8 +302,7 @@ func checkUnNamespacedPolicies(
 					continue
 				}
 			} else if policy.Status.ComplianceState != iampolicyv1.Compliant {
-				glog.Infof("Not changing non-compliant to compliant on policy %s "+
-					"due to the error that was encountered when getting the user list", policy.Name)
+				log.Info("Not updating status to compliant due to error listing users.", "Name", policy.Name)
 
 				continue
 			}
@@ -332,18 +329,17 @@ func getGroupMembership(group string) ([]string, error) {
 		metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
-			log.Info(fmt.Sprintf("The group %s was not found. "+
-				"It may not exist or may not be an OpenShift group.", group))
+			log.Info(fmt.Sprintf("The group %s was not found.", group))
 
 			return []string{}, nil
 		}
 
-		return nil, fmt.Errorf("failed to get the OpenShift group %s: %w", group, err)
+		return nil, fmt.Errorf("failed to get OpenShift group %s: %w", group, err)
 	}
 
 	users, found, err := unstructured.NestedStringSlice(openShiftUserGroup.Object, "users")
 	if err != nil || !found {
-		log.Info(fmt.Sprintf("The group %s was in an unexpected format", group))
+		log.Info(fmt.Sprintf("Could not retrieve users from group '%s'.", group))
 
 		// returning nil here is intentional
 		//nolint:nilerr
@@ -367,7 +363,7 @@ func checkAllClusterLevel(
 	for _, regex := range ignoreCRBs {
 		regex, err := regexp.Compile(string(regex))
 		if err != nil {
-			err = fmt.Errorf("the ignoreClusterRoleBindings entry of %s is invalid: %w", regex, err)
+			err = fmt.Errorf("ignoreClusterRoleBindings value '%s' is not a valid regular expression: %w", regex, err)
 
 			return 0, err
 		}
@@ -382,13 +378,8 @@ func checkAllClusterLevel(
 
 		for _, regex := range compiledIgnoreCRBs {
 			if regex.MatchString(clusterRoleBinding.Name) {
-				log.Info(
-					fmt.Sprintf(
-						"The ignoreClusterRoleBinding entry of `%s` matched \"%s\". Skipping.",
-						regex,
-						clusterRoleBinding.Name,
-					),
-				)
+				log.Info(fmt.Sprintf("ignoreClusterRoleBinding entry '%s' matched '%s'. Skipping.",
+					regex, clusterRoleBinding.Name))
 
 				ignore = true
 
@@ -409,7 +400,9 @@ func checkAllClusterLevel(
 				} else if subject.Kind == "Group" {
 					users, err := getGroupMembership(subject.Name)
 					if err != nil {
-						log.Error(err, "The policy compliance will not be able to be fully determined")
+						log.Error(err, "Error retrieving users in group (policy compliance will be unknown)",
+							"ClusterRoleBinding", clusterRoleBinding.Name, "ClusterRole", clusterroleref,
+							"Group", subject.Name)
 
 						continue
 					}
@@ -573,7 +566,7 @@ func printMap(myMap map[string]*iampolicyv1.IamPolicy) {
 	log.Info("Available iam policies: ")
 
 	for _, v := range myMap {
-		log.Info(fmt.Sprintf("policy = %v \n", v.Name))
+		log.Info(fmt.Sprintf("policy = %v", v.Name))
 	}
 }
 
@@ -598,9 +591,9 @@ func createParentPolicyEvent(instance *iampolicyv1.IamPolicy) {
 }
 
 func createParentPolicy(instance *iampolicyv1.IamPolicy) policiesv1.Policy {
-	nameSpace := common.ExtractNamespaceLabel(instance)
-	if nameSpace == "" {
-		nameSpace = NamespaceWatched
+	namespace := common.ExtractNamespaceLabel(instance)
+	if namespace == "" {
+		namespace = NamespaceWatched
 	}
 
 	plc := policiesv1.Policy{
@@ -608,7 +601,7 @@ func createParentPolicy(instance *iampolicyv1.IamPolicy) policiesv1.Policy {
 			Name: instance.OwnerReferences[0].Name,
 			// we are making an assumption here
 			// that the parent policy is in the watched-namespace passed as flag
-			Namespace: nameSpace,
+			Namespace: namespace,
 			UID:       instance.OwnerReferences[0].UID,
 		},
 		TypeMeta: metav1.TypeMeta{

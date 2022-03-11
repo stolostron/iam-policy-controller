@@ -20,13 +20,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// KubeClient a k8s client used for k8s native resources
-var KubeClient *kubernetes.Interface
+var (
+	// KubeClient is a k8s client used for k8s native resources
+	KubeClient *kubernetes.Interface
+	// KubeConfig is the given kubeconfig at startup
+	KubeConfig *rest.Config
 
-// KubeConfig is the given kubeconfig at startup
-var KubeConfig *rest.Config
-
-var HubConfig *rest.Config
+	HubConfig *rest.Config
+)
 
 // Initialize to initialize some controller variables
 func Initialize(kClient *kubernetes.Interface, cfg *rest.Config) {

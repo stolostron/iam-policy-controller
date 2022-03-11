@@ -39,54 +39,49 @@ import (
 	"github.com/stolostron/iam-policy-controller/pkg/common"
 )
 
-var log = logf.Log.WithName("controller_iampolicy")
+const (
+	grcCategory = "system-and-information-integrity"
+	// Format string taking the role name and the user count to create the violation message
+	violationMsgF = "The number of users with the %s role is at least %s above the specified limit"
+	// Format string taking the role name to make the regex to extract the usercount from the violation message
+	// Reminder: always `regexp.QuoteMeta` the input here.
+	violationMsgFUserCountRegex = `^(?:The number of users with the %s role is at least )` +
+		`(\d+)(?: above the specified limit)$`
+	// The default IgnoreClusterRoleBindings regex when not specified in the policy.
+	defaultIgnoreCRBs = `^system:.+$`
+	ControllerName    = "iam-policy-controller"
+)
 
-const grcCategory = "system-and-information-integrity"
-
-// ClusterRoleBinding objects in OpenShift set the API group of a Group subject
-// to rbac.authorization.k8s.io even though it should be user.openshift.io.
-var openShiftGroupGVR = schema.GroupVersionResource{
-	Group:    "user.openshift.io",
-	Version:  "v1",
-	Resource: "groups",
-}
-
-// availablePolicies is a cach all all available polices
-var availablePolicies common.SyncedPolicyMap
-
-// PlcChan a channel used to pass policies ready for update
-var PlcChan chan *iampolicyv1.IamPolicy
-
-// KubeClient a k8s client used for k8s native resources
-var KubeClient *kubernetes.Interface
-
-// KubeDynamicClient a dynamic k8s client
-var KubeDynamicClient *dynamic.Interface
-
-var reconcilingAgent *IamPolicyReconciler
-
-// NamespaceWatched defines which namespace we can watch for the GRC policies and ignore others
-var NamespaceWatched string
-
-// EventOnParent specifies if we also want to send events to the parent policy. Available options are yes/no/ifpresent
-var EventOnParent string
-
-// Formats the reason section of generated events
-var formatString = "policy: %s/%s"
-
-// A way to allow exiting out of the periodic policy check loop
-var exitExecLoop string
-
-// Format string taking the role name and the user count to create the violation message
-const violationMsgF = "The number of users with the %s role is at least %s above the specified limit"
-
-// Format string taking the role name to make the regex to extract the usercount from the violation message
-// Reminder: always `regexp.QuoteMeta` the input here.
-const violationMsgFUserCountRegex = `^(?:The number of users with the %s role is at least )` +
-	`(\d+)(?: above the specified limit)$`
-
-// The default IgnoreClusterRoleBindings regex when not specified in the policy.
-const defaultIgnoreCRBs = `^system:.+$`
+var (
+	log = ctrl.Log.WithName(ControllerName)
+	// blank assignment to verify that ReconcileIamPolicy implements reconcile.Reconciler
+	_ reconcile.Reconciler = &IamPolicyReconciler{}
+	// ClusterRoleBinding objects in OpenShift set the API group of a Group subject
+	// to rbac.authorization.k8s.io even though it should be user.openshift.io.
+	openShiftGroupGVR = schema.GroupVersionResource{
+		Group:    "user.openshift.io",
+		Version:  "v1",
+		Resource: "groups",
+	}
+	// availablePolicies is a cache of all available policies
+	availablePolicies common.SyncedPolicyMap
+	// PlcChan a channel used to pass policies ready for update
+	PlcChan chan *iampolicyv1.IamPolicy
+	// KubeClient a k8s client used for k8s native resources
+	KubeClient *kubernetes.Interface
+	// KubeDynamicClient a dynamic k8s client
+	KubeDynamicClient *dynamic.Interface
+	reconcilingAgent  *IamPolicyReconciler
+	// NamespaceWatched defines which namespace we can watch for the GRC policies and ignore others
+	NamespaceWatched string
+	// EventOnParent specifies if we also want to send events to the parent policy. Available options
+	// are yes/no/ifpresent
+	EventOnParent string
+	// Formats the reason section of generated events
+	formatString = "policy: %s/%s"
+	// A way to allow exiting out of the periodic policy check loop
+	exitExecLoop string
+)
 
 // Initialize to initialize some controller variables
 func Initialize(
@@ -106,9 +101,6 @@ func Initialize(
 
 	return nil
 }
-
-// blank assignment to verify that ReconcileIamPolicy implements reconcile.Reconciler
-var _ reconcile.Reconciler = &IamPolicyReconciler{}
 
 // IamPolicyReconciler reconciles a IamPolicy object
 // Annotation for generating RBAC role for writing Events

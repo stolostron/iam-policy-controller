@@ -62,11 +62,10 @@ func main() {
 	// Add flags registered by imported packages (e.g. glog and controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
-	var clusterName, namespace, eventOnParent, hubConfigSecretNs, hubConfigSecretName, metricsAddr, probeAddr string
+	var clusterName, eventOnParent, hubConfigSecretNs, hubConfigSecretName, metricsAddr, probeAddr string
 	var frequency uint
 	var enableLease, enableLeaderElection, legacyLeaderElection bool
 
-	pflag.StringVar(&namespace, "watch-ns", "default", "Watched Kubernetes namespace")
 	pflag.UintVar(&frequency, "update-frequency", 10, "The status update frequency (in seconds) of a mutation policy")
 	pflag.StringVar(
 		&eventOnParent,

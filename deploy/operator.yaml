@@ -146,6 +146,8 @@ spec:
       containers:
       - args:
         - --enable-lease=true
+        - --log-level=2
+        - --v=0
         command:
         - iam-policy-controller
         env:

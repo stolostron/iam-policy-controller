@@ -115,10 +115,10 @@ func main() {
 
 	klogZap, err := zaputil.BuildForKlog(zflags.GetConfig(), flag.CommandLine)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to build zap logger for klog: %v", err))
+		setupLog.Error(err, "Failed to build zap logger for klog, those logs will not go through zap")
+	} else {
+		klog.SetLogger(zapr.NewLogger(klogZap).WithName("klog"))
 	}
-
-	klog.SetLogger(zapr.NewLogger(klogZap).WithName("klog"))
 
 	printVersion()
 

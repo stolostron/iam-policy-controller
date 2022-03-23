@@ -407,6 +407,28 @@ func TestCreateParentPolicy(t *testing.T) {
 }
 
 func TestHandleAddingPolicy(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		description       string
+		namespaceSelector iampolicyv1.NonEmptyString
+		complianceState   iampolicyv1.ComplianceState
+		expectedMsg       string
+	}{
+		{
+			"Adds policy when namespace exists",
+			"default",
+			"Compliant",
+			"The number of users with the cluster-admin role is at least 0 above the specified limit",
+		},
+		{
+			"Adds policy when namespace doesn't exist",
+			"not-a-namespace",
+			"Compliant",
+			"The number of users with the cluster-admin role is at least 0 above the specified limit",
+		},
+	}
+
 	var simpleClient kubernetes.Interface = testclient.NewSimpleClientset()
 
 	typeMeta := metav1.TypeMeta{
@@ -428,15 +450,30 @@ func TestHandleAddingPolicy(t *testing.T) {
 	}
 
 	common.Initialize(&simpleClient, nil)
-	handleAddingPolicy(&iamPolicy)
-	policy, found := availablePolicies.GetObject(iamPolicy.Namespace + "." + iamPolicy.Name)
-	assert.True(t, found)
-	assert.NotNil(t, policy)
-	handleRemovingPolicy("foo", "default")
 
-	policy, found = availablePolicies.GetObject(iamPolicy.Namespace + "." + iamPolicy.Name)
-	assert.False(t, found)
-	assert.Nil(t, policy)
+	for _, test := range tests {
+		test := test
+
+		t.Run(
+			test.description,
+			func(t *testing.T) {
+				t.Parallel()
+				iamPolicy := iamPolicy
+				iamPolicy.Spec.NamespaceSelector.Include = []iampolicyv1.NonEmptyString{test.namespaceSelector}
+				handleAddingPolicy(&iamPolicy)
+				policy, found := availablePolicies.GetObject(iamPolicy.Namespace + "." + iamPolicy.Name)
+				assert.True(t, found)
+				assert.NotNil(t, policy)
+				assert.Equal(t, test.complianceState, policy.Status.ComplianceState)
+				assert.Equal(t, test.expectedMsg, policy.Status.CompliancyDetails["foo"]["cluster-wide"][0])
+				handleRemovingPolicy("foo", "default")
+
+				policy, found = availablePolicies.GetObject(iamPolicy.Namespace + "." + iamPolicy.Name)
+				assert.False(t, found)
+				assert.Nil(t, policy)
+			},
+		)
+	}
 }
 
 func TestGetContainerID(t *testing.T) {

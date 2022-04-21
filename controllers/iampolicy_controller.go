@@ -136,6 +136,7 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			reqLogger.Info("Policy could not be found, removing it")
 			handleRemovingPolicy(request.NamespacedName.Name, request.NamespacedName.Namespace)
 
 			return reconcile.Result{}, nil
@@ -232,6 +233,8 @@ func PeriodicallyExecIamPolicies(freq uint) {
 
 		// check if continue
 		if exitExecLoop == "true" {
+			log.V(3).Info("Exiting PeriodicallyExecIamPolicies")
+
 			return
 		}
 		// making sure that if processing is > freq we don't sleep
@@ -486,6 +489,8 @@ func checkComplianceBasedOnDetails(plc *iampolicyv1.IamPolicy, roleName string) 
 }
 
 func updatePolicyStatus(policies map[string]*iampolicyv1.IamPolicy) (*iampolicyv1.IamPolicy, error) {
+	log.Info("Updating status for IAM Policies")
+
 	for _, instance := range policies { // policies is a map where: key = plc.Name, value = pointer to plc
 		err := reconcilingAgent.Status().Update(context.TODO(), instance)
 		if err != nil {
@@ -508,6 +513,8 @@ func updatePolicyStatus(policies map[string]*iampolicyv1.IamPolicy) (*iampolicyv
 					convertPolicyStatusToString(instance))
 			}
 		}
+
+		log.Info("Status update complete", "IAMPolicy", instance.Name)
 	}
 
 	// return nil here is intentional

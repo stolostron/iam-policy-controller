@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	policiesv1 "github.com/stolostron/governance-policy-propagator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -27,14 +26,15 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
-	"github.com/stolostron/iam-policy-controller/pkg/common"
+	iampolicyv1 "open-cluster-management.io/iam-policy-controller/api/v1"
+	"open-cluster-management.io/iam-policy-controller/pkg/common"
 )
 
 const (

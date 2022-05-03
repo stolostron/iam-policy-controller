@@ -20,7 +20,6 @@ import (
 	"github.com/go-logr/zapr"
 	"github.com/spf13/pflag"
 	"github.com/stolostron/go-log-utils/zaputil"
-	policiesv1 "github.com/stolostron/governance-policy-propagator/api/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
@@ -31,14 +30,15 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/klog/v2"
 	"open-cluster-management.io/addon-framework/pkg/lease"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
-	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
-	"github.com/stolostron/iam-policy-controller/controllers"
-	common "github.com/stolostron/iam-policy-controller/pkg/common"
-	"github.com/stolostron/iam-policy-controller/version"
+	iampolicyv1 "open-cluster-management.io/iam-policy-controller/api/v1"
+	"open-cluster-management.io/iam-policy-controller/controllers"
+	common "open-cluster-management.io/iam-policy-controller/pkg/common"
+	"open-cluster-management.io/iam-policy-controller/version"
 )
 
 var (

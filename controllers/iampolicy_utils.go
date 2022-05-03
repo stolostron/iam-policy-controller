@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"strings"
 
-	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
+	iampolicyv1 "open-cluster-management.io/iam-policy-controller/api/v1"
 )
 
 //=================================================================

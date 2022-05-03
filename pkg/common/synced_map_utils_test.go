@@ -15,7 +15,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
+	iampolicyv1 "open-cluster-management.io/iam-policy-controller/api/v1"
 )
 
 var plc = &iampolicyv1.IamPolicy{

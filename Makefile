@@ -37,10 +37,6 @@ REGISTRY ?= quay.io/stolostron
 TAG ?= latest
 IMAGE_NAME_AND_VERSION ?= $(REGISTRY)/$(IMG)
 
-# Github host to use for checking the source tree;
-# Override this variable ue with your own value if you're working on forked repo.
-GIT_HOST ?= github.com/stolostron
-
 include build/common/Makefile.common.mk
 
 .PHONY: all lint test dependencies build image run deploy install fmt vet generate \
@@ -200,7 +196,7 @@ e2e-dependencies:
 	go get github.com/onsi/gomega/...@$(GOMEGA_VERSION)
 
 e2e-build-instrumented:
-	go test -covermode=atomic -coverpkg=$(GIT_HOST)/$(IMG)/... -c -tags e2e ./ -o build/_output/bin/$(IMG)-instrumented
+	go test -covermode=atomic -coverpkg=$(shell cat go.mod | head -1 | cut -d ' ' -f 2)/... -c -tags e2e ./ -o build/_output/bin/$(IMG)-instrumented
 
 e2e-run-instrumented:
 	WATCH_NAMESPACE="$(WATCH_NAMESPACE)" ./build/_output/bin/$(IMG)-instrumented -test.run "^TestRunMain$$" -test.coverprofile=coverage_e2e.out &>/dev/null &

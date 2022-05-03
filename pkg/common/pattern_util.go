@@ -9,7 +9,7 @@
 package common
 
 import (
-	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
+	iampolicyv1 "open-cluster-management.io/iam-policy-controller/api/v1"
 )
 
 // ExtractNamespaceLabel to find out the cluster-namespace from the label

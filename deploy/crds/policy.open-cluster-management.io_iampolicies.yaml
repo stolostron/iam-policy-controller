@@ -79,6 +79,8 @@ spec:
                 enum:
                 - Inform
                 - inform
+                - Enforce
+                - enforce
                 type: string
               severity:
                 description: low, medium, high, or critical

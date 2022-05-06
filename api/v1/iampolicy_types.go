@@ -18,7 +18,6 @@ import (
 // +kubebuilder:validation:MinLength=1
 type NonEmptyString string
 
-// Only Inform is currently supported. Setting this to Enforce will have the same effect as Inform.
 // +kubebuilder:validation:Enum=Inform;inform;Enforce;enforce
 type RemediationAction string
 
@@ -53,7 +52,7 @@ type IamPolicySpec struct {
 	// By default, all cluster role bindings that have a name which starts with system:
 	// will be ignored. It is recommended to set this to a stricter value.
 	IgnoreClusterRoleBindings []NonEmptyString `json:"ignoreClusterRoleBindings,omitempty"`
-	// enforce, inform
+	// Only Inform is currently supported. Setting this to Enforce will have the same effect as Inform.
 	RemediationAction RemediationAction `json:"remediationAction,omitempty"`
 	// Selecting a list of namespaces where the policy applies. This field is obsolete and does not
 	// do anything.

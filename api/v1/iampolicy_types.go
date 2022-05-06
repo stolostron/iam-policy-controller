@@ -18,8 +18,8 @@ import (
 // +kubebuilder:validation:MinLength=1
 type NonEmptyString string
 
-/// RemediationAction : enforce or inform
-// +kubebuilder:validation:Enum=Inform;inform
+// Only Inform is currently supported. Setting this to Enforce will have the same effect as Inform.
+// +kubebuilder:validation:Enum=Inform;inform;Enforce;enforce
 type RemediationAction string
 
 const (

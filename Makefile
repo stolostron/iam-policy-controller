@@ -96,42 +96,6 @@ lint-dependencies:
 lint: lint-dependencies lint-all
 
 ############################################################
-# unit test
-############################################################
-GOSEC = $(LOCAL_BIN)/gosec
-KUBEBUILDER = $(LOCAL_BIN)/kubebuilder
-KBVERSION = 3.2.0
-K8S_VERSION = 1.21.2
-
-test: test-dependencies
-	go test $(TESTARGS)  ./...
-
-test-coverage: TESTARGS = -json -cover -covermode=atomic -coverprofile=coverage_unit.out
-test-coverage: test
-
-test-dependencies: kubebuilder-dependencies kubebuilder
-
-kubebuilder:
-	@if [ "$$($(KUBEBUILDER) version 2>/dev/null | grep -o KubeBuilderVersion:\"[0-9]*\.[0-9]\.[0-9]*\")" != "KubeBuilderVersion:\"$(KBVERSION)\"" ]; then \
-		echo "Installing Kubebuilder"; \
-		curl -L https://github.com/kubernetes-sigs/kubebuilder/releases/download/v$(KBVERSION)/kubebuilder_$(GOOS)_$(GOARCH) -o $(KUBEBUILDER); \
-		chmod +x $(KUBEBUILDER); \
-	fi
-
-kubebuilder-dependencies: $(LOCAL_BIN)
-	@if [ ! -f $(LOCAL_BIN)/etcd ] || [ ! -f $(LOCAL_BIN)/kube-apiserver ] || [ ! -f $(LOCAL_BIN)/kubectl ] || \
-	[ "$$($(KUBEBUILDER) version 2>/dev/null | grep -o KubeBuilderVersion:\"[0-9]*\.[0-9]\.[0-9]*\")" != "KubeBuilderVersion:\"$(KBVERSION)\"" ]; then \
-		echo "Installing envtest Kubebuilder assets"; \
-		curl -L "https://go.kubebuilder.io/test-tools/$(K8S_VERSION)/$(GOOS)/$(GOARCH)" | tar xz --strip-components=2 -C $(LOCAL_BIN); \
-	fi
-
-gosec:
-	$(call go-get-tool,github.com/securego/gosec/v2/cmd/gosec@v2.9.6)
-
-gosec-scan: gosec
-	$(GOSEC) -fmt sonarqube -out gosec.json -no-fail -exclude-dir=.go ./...
-
-############################################################
 # build
 ############################################################
 
@@ -308,33 +272,6 @@ e2e-debug:
 	kubectl get iampolicies.policy.open-cluster-management.io --all-namespaces
 	kubectl describe pods -n $(KIND_NAMESPACE)
 	kubectl logs $$(kubectl get pods -n $(KIND_NAMESPACE) -o name | grep $(IMG)) -n $(KIND_NAMESPACE)
-
-############################################################
-# Generate manifests
-############################################################
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
-
-.PHONY: manifests
-manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=iam-policy-controller paths="./..." output:crd:artifacts:config=deploy/crds output:rbac:artifacts:config=deploy/rbac
-
-.PHONY: generate
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-
-.PHONY: generate-operator-yaml
-generate-operator-yaml: kustomize manifests
-	$(KUSTOMIZE) build deploy/manager > deploy/operator.yaml
-
-.PHONY: controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1)
-
-.PHONY: kustomize
-kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,sigs.k8s.io/kustomize/kustomize/v4@v4.5.4)
 
 ############################################################
 # test coverage

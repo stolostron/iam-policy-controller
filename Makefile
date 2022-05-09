@@ -51,6 +51,7 @@ endef
 
 include build/common/Makefile.common.mk
 
+.PHONY: all
 all: test
 
 .PHONY: clean
@@ -73,16 +74,19 @@ $(LOCAL_BIN):
 ############################################################
 
 # Run go fmt against code
+.PHONY: fmt-dependencies
 fmt-dependencies:
 	$(call go-get-tool,github.com/daixiang0/gci@v0.2.9)
 	$(call go-get-tool,mvdan.cc/gofumpt@v0.2.0)
 
+.PHONY: fmt
 fmt: fmt-dependencies
 	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofmt -s -w
 	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gofumpt -l -w
 	find . -not \( -path "./.go" -prune \) -name "*.go" | xargs gci -w -local "$(shell cat go.mod | head -1 | cut -d " " -f 2)"
 
 # Run go vet against code
+.PHONY: vet
 vet:
 	go vet ./...
 
@@ -90,29 +94,36 @@ vet:
 # lint
 ############################################################
 
+.PHONY: lint-dependencies
 lint-dependencies:
 	$(call go-get-tool,github.com/golangci/golangci-lint/cmd/golangci-lint@v1.41.1)
 
+.PHONY: lint
 lint: lint-dependencies lint-all
 
 ############################################################
 # build
 ############################################################
 
+.PHONY: dependencies
 dependencies: dependencies-go test-dependencies
 
+.PHONY: dependencies-go
 dependencies-go:
 	go mod tidy
 	go mod download
 
+.PHONY: build
 build:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./build/_output/bin/iam-policy-controller ./
 
+.PHONY: build-images
 build-images:
 	@docker build -t ${IMAGE_NAME_AND_VERSION} .
 	@docker tag ${IMAGE_NAME_AND_VERSION} $(REGISTRY)/$(IMG):$(TAG)
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
+.PHONY: run
 run: generate fmt vet
 	WATCH_NAMESPACE=$(WATCH_NAMESPACE) go run ./main.go --leader-elect=false
 
@@ -148,15 +159,18 @@ kustomize: ## Download kustomize locally if necessary.
 ############################################################
 
 # Install CRDs into a cluster
+.PHONY: install
 install: manifests
 	kubectl apply -f deploy/crds
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
+.PHONY: deploy
 deploy:
 	kubectl apply -f deploy/ -n $(CONTROLLER_NAMESPACE)
 	kubectl apply -f deploy/crds/ -n $(CONTROLLER_NAMESPACE)
 	kubectl set env deployment/$(IMG) -n $(CONTROLLER_NAMESPACE) WATCH_NAMESPACE=$(WATCH_NAMESPACE)
 
+.PHONY: create-ns
 create-ns:
 	@kubectl create namespace $(CONTROLLER_NAMESPACE) || true
 	@kubectl create namespace $(WATCH_NAMESPACE) || true
@@ -215,14 +229,17 @@ kind-bootstrap-cluster: kind-create-cluster install-crds kind-deploy-controller 
 .PHONY: kind-bootstrap-cluster-dev
 kind-bootstrap-cluster-dev: kind-create-cluster install-crds install-resources
 
+.PHONY: kind-deploy-controller
 kind-deploy-controller: install-crds
 	@echo installing $(IMG)
 	kubectl create ns $(KIND_NAMESPACE) || true
 	kubectl apply -f deploy/operator.yaml -n $(KIND_NAMESPACE)
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"env\":[{\"name\":\"WATCH_NAMESPACE\",\"value\":\"$(WATCH_NAMESPACE)\"}]}]}}}}"
 
+.PHONY: deploy-controller
 deploy-controller: kind-deploy-controller
 
+.PHONY: kind-deploy-controller-dev
 kind-deploy-controller-dev: kind-deploy-controller
 	@echo Pushing image to KinD cluster
 	kind load docker-image $(REGISTRY)/$(IMG):$(TAG) --name $(KIND_NAME)
@@ -231,40 +248,51 @@ kind-deploy-controller-dev: kind-deploy-controller
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"image\":\"$(REGISTRY)/$(IMG):$(TAG)\",\"args\":[]}]}}}}"
 	kubectl rollout status -n $(KIND_NAMESPACE) deployment $(IMG) --timeout=180s
 
+.PHONY: kind-create-cluster
 kind-create-cluster:
 	@echo "creating cluster"
 	kind create cluster --name $(KIND_NAME) $(KIND_ARGS)
 	kind get kubeconfig --name $(KIND_NAME) > $(PWD)/kubeconfig_managed
 
+.PHONY: kind-delete-cluster
 kind-delete-cluster:
 	kind delete cluster --name $(KIND_NAME)
 
+.PHONY: install-crds
 install-crds:
 	@echo installing crds
 	kubectl apply -f deploy/crds/policy.open-cluster-management.io_iampolicies.yaml
 
+.PHONY: install-resources
 install-resources:
 	@echo creating namespaces
 	kubectl create ns $(WATCH_NAMESPACE)
 
+.PHONY: e2e-dependencies
 e2e-dependencies:
 	$(call go-get-tool,github.com/onsi/ginkgo/v2/ginkgo@$(shell awk '/github.com\/onsi\/ginkgo\/v2/ {print $$2}' go.mod))
 
+.PHONY: e2e-test
 e2e-test:
 	$(GINKGO) -v --fail-fast --slow-spec-threshold=10s $(E2E_TEST_ARGS) test/e2e
 
+.PHONY: e2e-test-coverage
 e2e-test-coverage: E2E_TEST_ARGS = --json-report=report_e2e.json --output-dir=.
 e2e-test-coverage: e2e-test
 
+.PHONY: e2e-build-instrumented
 e2e-build-instrumented:
 	go test -covermode=atomic -coverpkg=$(shell cat go.mod | head -1 | cut -d ' ' -f 2)/... -c -tags e2e ./ -o build/_output/bin/$(IMG)-instrumented
 
+.PHONY: e2e-run-instrumented
 e2e-run-instrumented:
 	WATCH_NAMESPACE="$(WATCH_NAMESPACE)" ./build/_output/bin/$(IMG)-instrumented -test.run "^TestRunMain$$" -test.coverprofile=coverage_e2e.out &>/dev/null &
 
+.PHONY: e2e-stop-instrumented
 e2e-stop-instrumented:
 	ps -ef | grep '$(IMG)' | grep -v grep | awk '{print $$2}' | xargs kill
 
+.PHONY: e2e-debug
 e2e-debug:
 	kubectl get all -n $(KIND_NAMESPACE)
 	kubectl get leases -n $(KIND_NAMESPACE)
@@ -277,13 +305,16 @@ e2e-debug:
 # test coverage
 ############################################################
 GOCOVMERGE = $(LOCAL_BIN)/gocovmerge
+.PHONY: coverage-dependencies
 coverage-dependencies:
 	$(call go-get-tool,github.com/wadey/gocovmerge@v0.0.0-20160331181800-b5bfa59ec0ad)
 
 COVERAGE_FILE = coverage.out
+.PHONY: coverage-merge
 coverage-merge: coverage-dependencies
 	@echo Merging the coverage reports into $(COVERAGE_FILE)
 	$(GOCOVMERGE) $(PWD)/coverage_* > $(COVERAGE_FILE)
 
+.PHONY: coverage-verify
 coverage-verify:
 	./build/common/scripts/coverage_calc.sh

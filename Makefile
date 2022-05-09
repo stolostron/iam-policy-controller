@@ -48,6 +48,15 @@ fmt vet generate go-coverage fmt-dependencies lint-dependencies
 
 all: test
 
+.PHONY: clean
+clean:
+	-rm bin/*
+	-rm build/_output/bin/*
+	-rm coverage*.out
+	-rm report*.json
+	-rm kubeconfig_managed
+	-rm -r vendor/
+
 ############################################################
 # format section
 ############################################################

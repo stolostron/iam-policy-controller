@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 	"open-cluster-management.io/addon-framework/pkg/lease"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -70,7 +71,7 @@ func main() {
 	// Add flags registered by imported packages (e.g. glog and controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
-	var clusterName, eventOnParent, hubConfigSecretNs, hubConfigSecretName, metricsAddr, probeAddr string
+	var clusterName, eventOnParent, hubConfigPath, metricsAddr, probeAddr string
 	var frequency uint
 	var enableLease, enableLeaderElection, legacyLeaderElection bool
 
@@ -87,15 +88,10 @@ func main() {
 		false,
 		"If enabled, the controller will start the lease controller to report its status")
 	pflag.StringVar(
-		&hubConfigSecretNs,
-		"hubconfig-secret-ns",
-		"open-cluster-management-agent-addon",
-		"Namespace for hub config kube-secret")
-	pflag.StringVar(
-		&hubConfigSecretName,
-		"hubconfig-secret-name",
-		"iam-policy-controller-hub-kubeconfig",
-		"Name of the hub config kube-secret")
+		&hubConfigPath,
+		"hub-kubeconfig-path",
+		"/var/run/klusterlet/kubeconfig",
+		"Path to the hub kubeconfig")
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", true,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -201,18 +197,21 @@ func main() {
 				os.Exit(1)
 			}
 		} else {
-			setupLog.Info(fmt.Sprintf("Found operator namespace %s.", operatorNs))
-			hubCfg, err := common.LoadHubConfig(hubConfigSecretNs, hubConfigSecretName)
-			if err != nil {
-				setupLog.Error(err, "Unable to load hub kubeconfig, setting up leaseUpdater anyway")
-			}
-
+			setupLog.V(2).Info("Got operator namespace", "Namespace", operatorNs)
 			setupLog.Info("Starting lease controller to report status")
+
 			leaseUpdater := lease.NewLeaseUpdater(
 				generatedClient,
 				"iam-policy-controller",
 				operatorNs,
-			).WithHubLeaseConfig(hubCfg, clusterName)
+			)
+
+			hubCfg, err := clientcmd.BuildConfigFromFlags("", hubConfigPath)
+			if err != nil {
+				setupLog.Error(err, "Could not load hub config, lease updater not set with config")
+			} else {
+				leaseUpdater = leaseUpdater.WithHubLeaseConfig(hubCfg, clusterName)
+			}
 
 			go leaseUpdater.Start(context.TODO())
 		}

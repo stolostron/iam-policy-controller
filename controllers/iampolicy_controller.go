@@ -88,7 +88,8 @@ func Initialize(
 	mgr manager.Manager,
 	clsName,
 	namespace,
-	eventParent string) {
+	eventParent string,
+) {
 	KubeClient = kClient
 	KubeDynamicClient = kDynamicClient
 	PlcChan = make(chan *iampolicyv1.IamPolicy, 100) // buffering up to 100 policies for update
@@ -130,7 +131,7 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 	// Fetch the IamPolicy instance
 	instance := &iampolicyv1.IamPolicy{}
 
-	err := r.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.Get(tx, request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -152,7 +153,7 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 		}
 
 		if updateNeeded {
-			if err := r.Update(context.Background(), instance); err != nil {
+			if err := r.Update(tx, instance); err != nil {
 				// return nil here is intentional
 				//nolint:nilerr
 				return reconcile.Result{Requeue: true}, nil
@@ -245,7 +246,8 @@ func PeriodicallyExecIamPolicies(freq uint) {
 }
 
 func checkUnNamespacedPolicies(
-	plcToUpdateMap map[string]*iampolicyv1.IamPolicy) (bool, error) {
+	plcToUpdateMap map[string]*iampolicyv1.IamPolicy,
+) (bool, error) {
 	plcMap := convertMaptoPolicyNameKey()
 
 	// group the policies with cluster users and the ones with groups

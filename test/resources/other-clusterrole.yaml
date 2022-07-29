@@ -1,0 +1,9 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: immortal
+  resourceVersion: "341"
+  uid: 430f4985-9009-44e4-a4a1-e8bab217ddef
+rules:
+- nonResourceURLs: ["/highlanders"]
+  verbs: ["delete"]

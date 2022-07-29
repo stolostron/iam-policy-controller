@@ -185,7 +185,7 @@ K8S_VERSION = 1.21.2
 
 .PHONY: test
 test: test-dependencies
-	KUBEBUILDER_ASSETS=$(LOCAL_BIN) go test $(TESTARGS)  ./...
+	KUBEBUILDER_ASSETS=$(LOCAL_BIN) go test $(TESTARGS)  `go list ./... | grep -v test/e2e`
 
 .PHONY: test-coverage
 test-coverage: TESTARGS = -json -cover -covermode=atomic -coverprofile=coverage_unit.out
@@ -286,7 +286,7 @@ e2e-build-instrumented:
 
 .PHONY: e2e-run-instrumented
 e2e-run-instrumented: e2e-build-instrumented
-	WATCH_NAMESPACE="$(WATCH_NAMESPACE)" ./build/_output/bin/$(IMG)-instrumented -test.run "^TestRunMain$$" -test.coverprofile=coverage_e2e.out &>/dev/null &
+	WATCH_NAMESPACE="$(WATCH_NAMESPACE)" ./build/_output/bin/$(IMG)-instrumented -test.run "^TestRunMain$$" -test.coverprofile=coverage_e2e.out &>build/_output/controller.log &
 
 .PHONY: e2e-stop-instrumented
 e2e-stop-instrumented:

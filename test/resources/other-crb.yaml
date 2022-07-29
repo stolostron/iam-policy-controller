@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: insert-story-reference
+roleRef:
+  name: immortal
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+subjects:
+  - name: connor-macleod
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: the-kurgan
+    apiGroup: rbac.authorization.k8s.io
+    kind: User

@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sith-lords-are-admins
+roleRef:
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+subjects:
+  - name: darth-sidious
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: darth-maul
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: darth-vader
+    apiGroup: rbac.authorization.k8s.io
+    kind: User

@@ -30,7 +30,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	iampolicyv1 "open-cluster-management.io/iam-policy-controller/api/v1"
@@ -176,7 +175,6 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 func (r *IamPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&iampolicyv1.IamPolicy{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 
@@ -318,7 +316,10 @@ func checkUnNamespacedPolicies(
 			update = true
 		}
 
-		checkComplianceBasedOnDetails(policy, clusterRoleRef)
+		if checkComplianceBasedOnDetails(policy, clusterRoleRef) {
+			plcToUpdateMap[policy.Name] = policy
+			update = true
+		}
 	}
 
 	return update, nil
@@ -464,23 +465,28 @@ func addViolationCount(plc *iampolicyv1.IamPolicy, roleName string, userCount in
 	return true
 }
 
-func checkComplianceBasedOnDetails(plc *iampolicyv1.IamPolicy, roleName string) {
+// checkComplianceBasedOnDetails ensures the policy's overall ComplianceState
+// matches what is described in the policy's CompliancyDetails, and returns true
+// if the ComplianceState changed, ie, if the policy status should be updated.
+func checkComplianceBasedOnDetails(plc *iampolicyv1.IamPolicy, roleName string) bool {
+	previousComplianceState := plc.Status.ComplianceState
+
 	plc.Status.ComplianceState = iampolicyv1.Compliant
 	if plc.Status.CompliancyDetails == nil {
-		return
+		return previousComplianceState != plc.Status.ComplianceState
 	}
 
 	if _, ok := plc.Status.CompliancyDetails[plc.Name]; !ok {
-		return
+		return previousComplianceState != plc.Status.ComplianceState
 	}
 
 	if len(plc.Status.CompliancyDetails[plc.Name]) == 0 {
-		return
+		return previousComplianceState != plc.Status.ComplianceState
 	}
 
 	for namespace, msgList := range plc.Status.CompliancyDetails[plc.Name] {
 		if len(msgList) == 0 {
-			return
+			return previousComplianceState != plc.Status.ComplianceState
 		}
 
 		userCount, err := extractUserCount(plc.Status.CompliancyDetails[plc.Name][namespace][0], roleName)
@@ -488,6 +494,8 @@ func checkComplianceBasedOnDetails(plc *iampolicyv1.IamPolicy, roleName string) 
 			plc.Status.ComplianceState = iampolicyv1.NonCompliant
 		}
 	}
+
+	return previousComplianceState != plc.Status.ComplianceState
 }
 
 func updatePolicyStatus(policies map[string]*iampolicyv1.IamPolicy) (*iampolicyv1.IamPolicy, error) {

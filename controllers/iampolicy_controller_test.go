@@ -28,7 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	iampolicyv1 "open-cluster-management.io/iam-policy-controller/api/v1"
-	"open-cluster-management.io/iam-policy-controller/pkg/common"
 )
 
 var iamPolicy = iampolicyv1.IamPolicy{
@@ -75,7 +74,7 @@ func TestReconcile(t *testing.T) {
 	}
 	var simpleClient kubernetes.Interface = testclient.NewSimpleClientset()
 
-	common.Initialize(&simpleClient, nil)
+	Initialize(&simpleClient, nil, "")
 
 	res, err := reconcileIamPolicy.Reconcile(context.TODO(), req)
 	if err != nil {
@@ -139,7 +138,7 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 		panic(err)
 	}
 
-	common.Initialize(&simpleClient, nil)
+	Initialize(&simpleClient, nil, "")
 
 	res, err := reconcileIamPolicy.Reconcile(context.TODO(), req)
 	if err != nil {
@@ -160,7 +159,7 @@ func TestPeriodicallyExecIamPolicies(t *testing.T) {
 func TestCheckUnNamespacedPolicies(t *testing.T) {
 	var simpleClient kubernetes.Interface = testclient.NewSimpleClientset()
 
-	common.Initialize(&simpleClient, nil)
+	Initialize(&simpleClient, nil, "")
 
 	iamPolicy := iampolicyv1.IamPolicy{
 		ObjectMeta: metav1.ObjectMeta{
@@ -219,15 +218,15 @@ func TestGetGroupMembership(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		// Restore KubeDynamicClient after the test
-		oldDynamicClient := KubeDynamicClient
-		defer func() { KubeDynamicClient = oldDynamicClient }()
+		// Restore targetK8sDynamicClient after the test
+		oldDynamicClient := targetK8sDynamicClient
+		defer func() { targetK8sDynamicClient = oldDynamicClient }()
 
 		// Register the OpenShift Group type with the runtime scheme
 		runtimeScheme := scheme.Scheme
 		runtimeScheme.AddKnownTypes(groupGV, &group{})
 		var client dynamic.Interface = testdynamicclient.NewSimpleDynamicClient(runtimeScheme, &test.group)
-		KubeDynamicClient = &client
+		targetK8sDynamicClient = &client
 
 		users, err := getGroupMembership(test.group.Name)
 		assert.Nil(t, err)
@@ -236,9 +235,9 @@ func TestGetGroupMembership(t *testing.T) {
 }
 
 func TestCheckAllClusterLevel(t *testing.T) {
-	// Restore KubeDynamicClient after the test
-	oldDynamicClient := KubeDynamicClient
-	defer func() { KubeDynamicClient = oldDynamicClient }()
+	// Restore targetK8sDynamicClient after the test
+	oldDynamicClient := targetK8sDynamicClient
+	defer func() { targetK8sDynamicClient = oldDynamicClient }()
 
 	// Register the OpenShift Group type with the runtime scheme
 	runtimeScheme := scheme.Scheme
@@ -346,7 +345,7 @@ func TestCheckAllClusterLevel(t *testing.T) {
 				var client dynamic.Interface = testdynamicclient.NewSimpleDynamicClient(
 					runtimeScheme, &groupObj,
 				)
-				KubeDynamicClient = &client
+				targetK8sDynamicClient = &client
 
 				userSubject := sub.Subject{
 					APIGroup:  "",
@@ -449,7 +448,7 @@ func TestHandleAddingPolicy(t *testing.T) {
 		panic(err)
 	}
 
-	common.Initialize(&simpleClient, nil)
+	Initialize(&simpleClient, nil, "")
 
 	for _, test := range tests {
 		test := test

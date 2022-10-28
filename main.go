@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog/v2"
 	"open-cluster-management.io/addon-framework/pkg/lease"
@@ -71,7 +72,7 @@ func main() {
 	// Add flags registered by imported packages (e.g. glog and controller-runtime)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 
-	var clusterName, eventOnParent, hubConfigPath, metricsAddr, probeAddr string
+	var clusterName, eventOnParent, hubConfigPath, targetKubeConfig, metricsAddr, probeAddr string
 	var frequency uint
 	var enableLease, enableLeaderElection, legacyLeaderElection bool
 
@@ -92,6 +93,12 @@ func main() {
 		"hub-kubeconfig-path",
 		"/var/run/klusterlet/kubeconfig",
 		"Path to the hub kubeconfig")
+	pflag.StringVar(
+		&targetKubeConfig,
+		"target-kubeconfig-path",
+		"",
+		"A path to an alternative kubeconfig for policy evaluation and enforcement.",
+	)
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", true,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -157,6 +164,31 @@ func main() {
 		os.Exit(1)
 	}
 
+	var targetK8sConfig *rest.Config
+	var targetK8sClient kubernetes.Interface
+	var targetK8sDynamicClient dynamic.Interface
+
+	if targetKubeConfig == "" {
+		targetK8sConfig = mgr.GetConfig()
+	} else {
+		var err error
+
+		targetK8sConfig, err = clientcmd.BuildConfigFromFlags("", targetKubeConfig)
+		if err != nil {
+			setupLog.Error(err, "Failed to load the target kubeconfig", "path", targetKubeConfig)
+			os.Exit(1)
+		}
+
+		setupLog.Info(
+			"Overrode the target Kubernetes cluster for policy evaluation and enforcement", "path", targetKubeConfig,
+		)
+	}
+
+	targetK8sClient = kubernetes.NewForConfigOrDie(targetK8sConfig)
+	targetK8sDynamicClient = dynamic.NewForConfigOrDie(targetK8sConfig)
+
+	controllers.Initialize(&targetK8sClient, &targetK8sDynamicClient, eventOnParent)
+
 	if err = (&controllers.IamPolicyReconciler{
 		Client:   mgr.GetClient(),
 		Recorder: mgr.GetEventRecorderFor("iampolicy-controller"),
@@ -179,14 +211,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Initialize some variables
-	var generatedClient kubernetes.Interface = kubernetes.NewForConfigOrDie(mgr.GetConfig())
-
-	dynamicClient := dynamic.NewForConfigOrDie(mgr.GetConfig())
-	common.Initialize(&generatedClient, mgr.GetConfig())
-
-	controllers.Initialize(&generatedClient, &dynamicClient, mgr, clusterName, namespace, eventOnParent)
-
 	// PeriodicallyExecIamPolicies is the go-routine that periodically checks the policies
 	// and does the needed work to make sure the desired state is achieved
 	go controllers.PeriodicallyExecIamPolicies(frequency)
@@ -203,9 +227,9 @@ func main() {
 		} else {
 			setupLog.V(2).Info("Got operator namespace", "Namespace", operatorNs)
 			setupLog.Info("Starting lease controller to report status")
-
+			// Always use the cluster that is running the controller for the lease.
 			leaseUpdater := lease.NewLeaseUpdater(
-				generatedClient,
+				kubernetes.NewForConfigOrDie(mgr.GetConfig()),
 				"iam-policy-controller",
 				operatorNs,
 			)

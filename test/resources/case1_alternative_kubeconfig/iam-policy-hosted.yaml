@@ -1,0 +1,12 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: IamPolicy
+metadata:
+  name: test-hosted-mode
+spec:
+  severity: medium
+  namespaceSelector:
+    include: ["*"]
+    exclude: ["kube-*", "openshift-*"]
+  remediationAction: inform
+  maxClusterRoleBindingUsers: 1
+  clusterRole: "hostedcr"

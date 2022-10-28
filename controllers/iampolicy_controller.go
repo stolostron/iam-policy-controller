@@ -29,7 +29,6 @@ import (
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	iampolicyv1 "open-cluster-management.io/iam-policy-controller/api/v1"
@@ -64,13 +63,11 @@ var (
 	availablePolicies common.SyncedPolicyMap
 	// PlcChan a channel used to pass policies ready for update
 	PlcChan chan *iampolicyv1.IamPolicy
-	// KubeClient a k8s client used for k8s native resources
-	KubeClient *kubernetes.Interface
-	// KubeDynamicClient a dynamic k8s client
-	KubeDynamicClient *dynamic.Interface
-	reconcilingAgent  *IamPolicyReconciler
-	// NamespaceWatched defines which namespace we can watch for the GRC policies and ignore others
-	NamespaceWatched string
+	// The Kubernetes client to use when evaluating/enforcing policies.
+	targetK8sClient *kubernetes.Interface
+	// The dynamic k8s  client to use when evaluating/enforcing policies.
+	targetK8sDynamicClient *dynamic.Interface
+	reconcilingAgent       *IamPolicyReconciler
 	// EventOnParent specifies if we also want to send events to the parent policy. Available options
 	// are yes/no/ifpresent
 	EventOnParent string
@@ -80,20 +77,15 @@ var (
 	exitExecLoop string
 )
 
-// Initialize to initialize some controller variables
+// Initialize  some controller variables
 func Initialize(
 	kClient *kubernetes.Interface,
 	kDynamicClient *dynamic.Interface,
-	mgr manager.Manager,
-	clsName,
-	namespace,
 	eventParent string,
 ) {
-	KubeClient = kClient
-	KubeDynamicClient = kDynamicClient
+	targetK8sClient = kClient
+	targetK8sDynamicClient = kDynamicClient
 	PlcChan = make(chan *iampolicyv1.IamPolicy, 100) // buffering up to 100 policies for update
-
-	NamespaceWatched = namespace
 
 	EventOnParent = strings.ToLower(eventParent)
 }
@@ -254,7 +246,7 @@ func checkUnNamespacedPolicies(
 	// group the policies with cluster users and the ones with groups
 	// take the plc with min users and groups and make it your baseline
 
-	ClusteRoleBindingList, err := (*common.KubeClient).RbacV1().ClusterRoleBindings().List(
+	ClusteRoleBindingList, err := (*targetK8sClient).RbacV1().ClusterRoleBindings().List(
 		context.TODO(),
 		metav1.ListOptions{})
 	if err != nil {
@@ -329,7 +321,7 @@ func checkUnNamespacedPolicies(
 // or is malformed, and empty string slice is returned. If the query itself failed, an error is
 // returned.
 func getGroupMembership(group string) ([]string, error) {
-	openShiftUserGroup, err := (*KubeDynamicClient).Resource(openShiftGroupGVR).Get(
+	openShiftUserGroup, err := (*targetK8sDynamicClient).Resource(openShiftGroupGVR).Get(
 		context.TODO(),
 		group,
 		metav1.GetOptions{})
@@ -608,17 +600,11 @@ func createParentPolicyEvent(instance *iampolicyv1.IamPolicy) {
 }
 
 func createParentPolicy(instance *iampolicyv1.IamPolicy) policiesv1.Policy {
-	namespace := common.ExtractNamespaceLabel(instance)
-	if namespace == "" {
-		namespace = NamespaceWatched
-	}
-
 	plc := policiesv1.Policy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: instance.OwnerReferences[0].Name,
-			// we are making an assumption here
-			// that the parent policy is in the watched-namespace passed as flag
-			Namespace: namespace,
+			// It's assumed that the parent policy is in the same namespace as the configuration policy
+			Namespace: instance.Namespace,
 			UID:       instance.OwnerReferences[0].UID,
 		},
 		TypeMeta: metav1.TypeMeta{

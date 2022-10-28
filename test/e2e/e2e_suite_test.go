@@ -38,7 +38,7 @@ var (
 
 func TestE2e(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Config policy controller e2e Suite")
+	RunSpecs(t, "Iam Policy Controller e2e Suite")
 }
 
 func init() {

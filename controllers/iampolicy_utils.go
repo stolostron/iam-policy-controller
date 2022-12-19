@@ -15,7 +15,7 @@ import (
 	iampolicyv1 "github.com/stolostron/iam-policy-controller/api/v1"
 )
 
-//=================================================================
+// =================================================================
 // convertPolicyStatusToString to be able to pass the status as event
 func convertPolicyStatusToString(plc *iampolicyv1.IamPolicy) (results string) {
 	result := "ComplianceState is still undetermined"

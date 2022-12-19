@@ -556,7 +556,7 @@ func handleAddingPolicy(plc *iampolicyv1.IamPolicy) {
 	availablePolicies.AddObject(fmt.Sprintf("%s.%s", plc.Namespace, plc.Name), plc)
 }
 
-//=================================================================
+// =================================================================
 // Helper functions that pretty prints a map
 func printMap(myMap map[string]*iampolicyv1.IamPolicy) {
 	if len(myMap) == 0 {

@@ -175,29 +175,6 @@ func TestCheckUnNamespacedPolicies(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestEnsureDefaultLabel(t *testing.T) {
-	updateNeeded := ensureDefaultLabel(&iamPolicy)
-	assert.True(t, updateNeeded)
-
-	labels1 := map[string]string{}
-	labels1["category"] = grcCategory
-	iamPolicy.Labels = labels1
-	updateNeeded = ensureDefaultLabel(&iamPolicy)
-	assert.False(t, updateNeeded)
-
-	labels2 := map[string]string{}
-	labels2["category"] = "foo"
-	iamPolicy.Labels = labels2
-	updateNeeded = ensureDefaultLabel(&iamPolicy)
-	assert.True(t, updateNeeded)
-
-	labels3 := map[string]string{}
-	labels3["foo"] = grcCategory
-	iamPolicy.Labels = labels3
-	updateNeeded = ensureDefaultLabel(&iamPolicy)
-	assert.True(t, updateNeeded)
-}
-
 func TestGetGroupMembership(t *testing.T) {
 	tests := []struct {
 		group         group

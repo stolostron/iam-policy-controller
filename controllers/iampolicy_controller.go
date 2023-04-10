@@ -36,7 +36,6 @@ import (
 )
 
 const (
-	grcCategory = "system-and-information-integrity"
 	// Format string taking the role name and the user count to create the violation message
 	violationMsgF = "The number of users with the %s role is at least %s above the specified limit"
 	// Format string taking the role name to make the regex to extract the usercount from the violation message
@@ -139,19 +138,6 @@ func (r *IamPolicyReconciler) Reconcile(tx context.Context, request ctrl.Request
 	}
 
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
-		updateNeeded := false
-		if !ensureDefaultLabel(instance) {
-			updateNeeded = true
-		}
-
-		if updateNeeded {
-			if err := r.Update(tx, instance); err != nil {
-				// return nil here is intentional
-				//nolint:nilerr
-				return reconcile.Result{Requeue: true}, nil
-			}
-		}
-
 		instance.Status.CompliancyDetails = nil // reset CompliancyDetails
 
 		reqLogger.Info("Iam policy was found, adding it...")
@@ -168,31 +154,6 @@ func (r *IamPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&iampolicyv1.IamPolicy{}).
 		Complete(r)
-}
-
-func ensureDefaultLabel(instance *iampolicyv1.IamPolicy) (updateNeeded bool) {
-	// we need to ensure this label exists -> category: "System and Information Integrity"
-	if instance.ObjectMeta.Labels == nil {
-		newlbl := make(map[string]string)
-		newlbl["category"] = grcCategory
-		instance.ObjectMeta.Labels = newlbl
-
-		return true
-	}
-
-	if _, ok := instance.ObjectMeta.Labels["category"]; !ok {
-		instance.ObjectMeta.Labels["category"] = grcCategory
-
-		return true
-	}
-
-	if instance.ObjectMeta.Labels["category"] != grcCategory {
-		instance.ObjectMeta.Labels["category"] = grcCategory
-
-		return true
-	}
-
-	return false
 }
 
 // PeriodicallyExecIamPolicies always check status - let this be the only function in the controller

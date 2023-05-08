@@ -72,7 +72,7 @@ func main() {
 
 	var clusterName, eventOnParent, hubConfigPath, targetKubeConfig, metricsAddr, probeAddr string
 	var frequency uint
-	var enableLease, enableLeaderElection, legacyLeaderElection bool
+	var enableLease, enableLeaderElection bool
 
 	pflag.UintVar(&frequency, "update-frequency", 10, "The status update frequency (in seconds) of a mutation policy")
 	pflag.StringVar(
@@ -100,8 +100,6 @@ func main() {
 	pflag.BoolVar(&enableLeaderElection, "leader-elect", true,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	pflag.BoolVar(&legacyLeaderElection, "legacy-leader-elect", false,
-		"Use a legacy leader election method for controller manager instead of the lease API.")
 	pflag.StringVar(&metricsAddr, "metrics-bind-address", ":8383", "The address the metric endpoint binds to.")
 	pflag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 
@@ -143,16 +141,6 @@ func main() {
 	if strings.Contains(namespace, ",") {
 		options.Namespace = ""
 		options.NewCache = cache.MultiNamespacedCacheBuilder(strings.Split(namespace, ","))
-	}
-
-	if legacyLeaderElection {
-		// If legacyLeaderElection is enabled, then that means the lease API is not available.
-		// In this case, use the legacy leader election method of a ConfigMap.
-		options.LeaderElectionResourceLock = "configmaps"
-	} else {
-		// use the leases leader election by default for controller-runtime 0.11 instead of
-		// the default of configmapsleases (leases is the new default in 0.12)
-		options.LeaderElectionResourceLock = "leases"
 	}
 
 	// Create a new manager to provide shared dependencies and start components

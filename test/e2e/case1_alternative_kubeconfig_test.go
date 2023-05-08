@@ -31,10 +31,10 @@ var _ = Describe("Test an alternative kubeconfig for policy evaluation", Ordered
 		Expect(altKubeconfigPath).ToNot(Equal(""))
 
 		targetK8sConfig, err := clientcmd.BuildConfigFromFlags("", altKubeconfigPath)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		targetK8sClient, err = kubernetes.NewForConfig(targetK8sConfig)
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterAll(func() {
@@ -42,13 +42,13 @@ var _ = Describe("Test an alternative kubeconfig for policy evaluation", Ordered
 			context.TODO(), "hostedrole", metav1.DeleteOptions{},
 		)
 		if !errors.IsNotFound(err) {
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		}
 		err = targetK8sClient.RbacV1().ClusterRoleBindings().Delete(
 			context.TODO(), "hostedbinding", metav1.DeleteOptions{},
 		)
 		if !errors.IsNotFound(err) {
-			Expect(err).To(BeNil())
+			Expect(err).ToNot(HaveOccurred())
 		}
 	})
 
@@ -79,7 +79,7 @@ var _ = Describe("Test an alternative kubeconfig for policy evaluation", Ordered
 			},
 		}
 		_, err := targetK8sClient.RbacV1().ClusterRoles().Create(context.TODO(), &cr, metav1.CreateOptions{})
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		crb := rbac.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
@@ -97,7 +97,7 @@ var _ = Describe("Test an alternative kubeconfig for policy evaluation", Ordered
 		}
 
 		_, err = targetK8sClient.RbacV1().ClusterRoleBindings().Create(context.TODO(), &crb, metav1.CreateOptions{})
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		By("Verifying that Policy is now Non-compliant")
 		Eventually(func() interface{} {

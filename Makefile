@@ -118,7 +118,7 @@ dependencies-go:
 
 .PHONY: build
 build:
-	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -a -tags netgo -o ./build/_output/bin/iam-policy-controller ./
+	@go build -o ./build/_output/bin/$(IMG) ./
 
 .PHONY: build-images
 build-images:

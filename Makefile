@@ -171,13 +171,13 @@ install: manifests
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 .PHONY: deploy
 deploy:
-	kubectl apply -f deploy/ -n $(CONTROLLER_NAMESPACE)
-	kubectl apply -f deploy/crds/ -n $(CONTROLLER_NAMESPACE)
-	kubectl set env deployment/$(IMG) -n $(CONTROLLER_NAMESPACE) WATCH_NAMESPACE=$(WATCH_NAMESPACE)
+	kubectl apply -f deploy/ -n $(KIND_NAMESPACE)
+	kubectl apply -f deploy/crds/ -n $(KIND_NAMESPACE)
+	kubectl set env deployment/$(IMG) -n $(KIND_NAMESPACE) WATCH_NAMESPACE=$(WATCH_NAMESPACE)
 
 .PHONY: create-ns
 create-ns:
-	@kubectl create namespace $(CONTROLLER_NAMESPACE) || true
+	@kubectl create namespace $(KIND_NAMESPACE) || true
 	@kubectl create namespace $(WATCH_NAMESPACE) || true
 
 ############################################################
@@ -242,7 +242,15 @@ kind-deploy-controller: install-crds
 deploy-controller: kind-deploy-controller
 
 .PHONY: kind-deploy-controller-dev
-kind-deploy-controller-dev: kind-deploy-controller
+kind-deploy-controller-dev: 
+	if [ "$(HOSTED)" = "hosted" ]; then\
+		$(MAKE) kind-deploy-controller-dev-addon ;\
+	else\
+		$(MAKE) kind-deploy-controller-dev-normal ;\
+	fi
+
+.PHONY: kind-deploy-controller-dev-normal
+kind-deploy-controller-dev-normal: kind-deploy-controller
 	@echo Pushing image to KinD cluster
 	kind load docker-image $(REGISTRY)/$(IMG):$(TAG) --name $(KIND_NAME)
 	@echo "Patch deployment image"
@@ -250,6 +258,11 @@ kind-deploy-controller-dev: kind-deploy-controller
 	kubectl patch deployment $(IMG) -n $(KIND_NAMESPACE) -p "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"$(IMG)\",\"image\":\"$(REGISTRY)/$(IMG):$(TAG)\",\"args\":[]}]}}}}"
 	kubectl rollout status -n $(KIND_NAMESPACE) deployment $(IMG) --timeout=180s
 
+.PHONY: kind-deploy-controller-dev-addon
+kind-deploy-controller-dev-addon:
+	kind load docker-image $(REGISTRY)/$(IMG):$(TAG) --name $(KIND_NAME)
+	kubectl annotate -n $(subst -hosted,,$(KIND_NAMESPACE)) --overwrite managedclusteraddon iam-policy-controller\
+		addon.open-cluster-management.io/values='{"args": {"frequency": 10}, "global":{"imagePullPolicy": "Never", "imageOverrides":{"iam_policy_controller": "$(REGISTRY)/$(IMG):$(TAG)"}}}'
 .PHONY: kind-create-cluster
 kind-create-cluster:
 	@echo "creating cluster"

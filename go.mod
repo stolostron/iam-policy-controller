@@ -1,6 +1,6 @@
 module open-cluster-management.io/iam-policy-controller
 
-go 1.19
+go 1.20
 
 require (
 	github.com/go-logr/zapr v1.2.3

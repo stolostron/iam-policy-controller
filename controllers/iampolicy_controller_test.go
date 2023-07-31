@@ -387,7 +387,7 @@ func TestCheckAllClusterLevel(t *testing.T) {
 	}
 }
 
-func TestPrintMap(t *testing.T) {
+func TestPrintMap(_ *testing.T) {
 	policies := map[string]*iampolicyv1.IamPolicy{}
 	policies["policy1"] = &iamPolicy
 	printMap(policies)
@@ -476,7 +476,7 @@ func TestHandleAddingPolicy(t *testing.T) {
 	}
 }
 
-func TestGetContainerID(t *testing.T) {
+func TestGetContainerID(_ *testing.T) {
 	containerStateWaiting := coretypes.ContainerStateWaiting{
 		Reason: "unknown",
 	}

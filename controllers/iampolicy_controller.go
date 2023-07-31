@@ -84,8 +84,8 @@ var (
 func Initialize(
 	kClient *kubernetes.Interface,
 	kDynamicClient *dynamic.Interface,
-	mgr manager.Manager,
-	clsName,
+	_ manager.Manager,
+	_,
 	namespace,
 	eventParent string,
 ) {

@@ -99,7 +99,7 @@ vet:
 
 .PHONY: lint-dependencies
 lint-dependencies:
-	$(call go-get-tool,github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.2)
+	$(call go-get-tool,github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2)
 
 .PHONY: lint
 lint: lint-dependencies lint-all
@@ -215,7 +215,7 @@ kubebuilder-dependencies: $(LOCAL_BIN)
 
 .PHONY: gosec
 gosec:
-	$(call go-get-tool,github.com/securego/gosec/v2/cmd/gosec@v2.9.6)
+	$(call go-get-tool,github.com/securego/gosec/v2/cmd/gosec@v2.15.0)
 
 .PHONY: gosec-scan
 gosec-scan: gosec

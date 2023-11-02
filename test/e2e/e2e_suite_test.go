@@ -11,8 +11,10 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"regexp"
 	"testing"
 
+	"github.com/ghodss/yaml"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +36,7 @@ var (
 	clientManaged         kubernetes.Interface
 	clientManagedDynamic  dynamic.Interface
 	gvrIamPolicy          schema.GroupVersionResource
+	gvrPolicy             schema.GroupVersionResource
 )
 
 func TestE2e(t *testing.T) {
@@ -54,6 +57,11 @@ var _ = BeforeSuite(func() {
 		Group:    "policy.open-cluster-management.io",
 		Version:  "v1",
 		Resource: "iampolicies",
+	}
+	gvrPolicy = schema.GroupVersionResource{
+		Group:    "policy.open-cluster-management.io",
+		Version:  "v1",
+		Resource: "policies",
 	}
 
 	clientManaged = NewKubeClient("", kubeconfigManaged, "")
@@ -189,4 +197,65 @@ func GetWithTimeout(
 	}
 
 	return nil
+}
+
+func CreateIAMPolicyWithParent(parentPolicyYAML, parentPolicyName, iamPolicyYAML string) {
+	By("Creating the parent policy")
+	Kubectl("apply", "-f", parentPolicyYAML, "-n", testNamespace)
+	parent := GetWithTimeout(gvrPolicy, parentPolicyName, testNamespace, true)
+	Expect(parent).NotTo(BeNil())
+
+	plcDef := ParseYaml(iamPolicyYAML)
+	ownerRefs := plcDef.GetOwnerReferences()
+	ownerRefs[0].UID = parent.GetUID()
+	plcDef.SetOwnerReferences(ownerRefs)
+
+	By("Creating the iam policy with the owner reference")
+
+	_, err := clientManagedDynamic.Resource(gvrIamPolicy).Namespace(testNamespace).
+		Create(context.TODO(), plcDef, metav1.CreateOptions{})
+	Expect(err).ToNot(HaveOccurred())
+
+	By("Verifying the iam policy exists")
+
+	plc := GetWithTimeout(gvrIamPolicy, plcDef.GetName(), testNamespace, true)
+	Expect(plc).NotTo(BeNil())
+}
+
+// ParseYaml read given yaml file and unmarshal it to &unstructured.Unstructured{}
+func ParseYaml(file string) *unstructured.Unstructured {
+	yamlFile, err := os.ReadFile(file)
+	Expect(err).ToNot(HaveOccurred())
+
+	yamlPlc := &unstructured.Unstructured{}
+	err = yaml.Unmarshal(yamlFile, yamlPlc)
+	Expect(err).ToNot(HaveOccurred())
+
+	return yamlPlc
+}
+
+func GetMatchingEvents(
+	namespace, objName, reasonRegex, msgRegex string,
+) []corev1.Event {
+	var eventList *corev1.EventList
+
+	EventuallyWithOffset(1, func() error {
+		var err error
+		eventList, err = clientManaged.CoreV1().Events(namespace).List(context.TODO(), metav1.ListOptions{})
+
+		return err
+	}, defaultTimeoutSeconds, 1).ShouldNot(HaveOccurred())
+
+	matchingEvents := make([]corev1.Event, 0)
+	msgMatcher := regexp.MustCompile(msgRegex)
+	reasonMatcher := regexp.MustCompile(reasonRegex)
+
+	for _, event := range eventList.Items {
+		if event.InvolvedObject.Name == objName && reasonMatcher.MatchString(event.Reason) &&
+			msgMatcher.MatchString(event.Message) {
+			matchingEvents = append(matchingEvents, event)
+		}
+	}
+
+	return matchingEvents
 }

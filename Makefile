@@ -286,6 +286,7 @@ kind-delete-cluster:
 install-crds:
 	@echo installing crds
 	kubectl apply -f deploy/crds/policy.open-cluster-management.io_iampolicies.yaml
+	kubectl apply -f https://raw.githubusercontent.com/stolostron/governance-policy-propagator/main/deploy/crds/policy.open-cluster-management.io_policies.yaml
 
 .PHONY: install-resources
 install-resources:

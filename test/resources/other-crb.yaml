@@ -13,3 +13,31 @@ subjects:
   - name: the-kurgan
     apiGroup: rbac.authorization.k8s.io
     kind: User
+  - name: number-three
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: number-four
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: number-five
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: number-six
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: number-seven
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: number-eight
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: number-nine
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: number-ten
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  - name: number-eleven
+    apiGroup: rbac.authorization.k8s.io
+    kind: User
+  # Exactly 11, in order to be 10 above the limit, to trigger a possible bug

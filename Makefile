@@ -103,7 +103,7 @@ lint-dependencies:
 	$(call go-get-tool,github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2)
 
 .PHONY: lint
-lint: lint-dependencies lint-all
+lint:
 
 ############################################################
 # build

@@ -31,7 +31,7 @@ var _ = Describe("Test IAM policy", func() {
 			}, "15s", 1).Should(BeEmpty())
 		})
 		It("Should become noncompliant after creating more bindings", func() {
-			Kubectl("apply", "-f", additionalBindingsYaml)
+			Kubectl("apply", "-f", additionalBindingsYaml, "--kubeconfig", kubeconfigManaged)
 
 			By("Checking policy status")
 			Eventually(func() interface{} {
@@ -48,7 +48,7 @@ var _ = Describe("Test IAM policy", func() {
 			}, defaultTimeoutSeconds, 1).ShouldNot(BeEmpty())
 		})
 		It("Should become compliant after the bindings are removed", func() {
-			Kubectl("delete", "-f", additionalBindingsYaml)
+			Kubectl("delete", "-f", additionalBindingsYaml, "--kubeconfig", kubeconfigManaged)
 			Eventually(func() interface{} {
 				pol := GetWithTimeout(gvrIamPolicy, policyName, testNamespace, true)
 				comp, _, _ := unstructured.NestedString(pol.Object, "status", "compliant")
@@ -72,11 +72,29 @@ var _ = Describe("Test IAM policy", func() {
 		})
 		complianceTests(adminIAMPolicyName, adminPolicyName, adminCRBYaml, "at least 1 above")
 		AfterAll(func() {
-			Kubectl("delete", "-f", adminCRBYaml, "--ignore-not-found", "-n", testNamespace)
-			Kubectl("delete", "-f", adminIAMPolicyYaml, "--ignore-not-found", "-n", testNamespace)
-			Kubectl("delete", "-f", adminPolicyYaml, "--ignore-not-found", "-n", testNamespace)
-			Kubectl("delete", "event", "--field-selector=involvedObject.name="+adminPolicyName, "-n", testNamespace)
-			Kubectl("delete", "event", "--field-selector=involvedObject.name="+adminIAMPolicyName, "-n", testNamespace)
+			Kubectl("delete",
+				"-f", adminCRBYaml,
+				"--ignore-not-found",
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
+			Kubectl("delete",
+				"-f", adminIAMPolicyYaml,
+				"--ignore-not-found",
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
+			Kubectl("delete",
+				"-f", adminPolicyYaml,
+				"--ignore-not-found",
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
+			Kubectl("delete", "event",
+				"--field-selector=involvedObject.name="+adminPolicyName,
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
+			Kubectl("delete", "event",
+				"--field-selector=involvedObject.name="+adminIAMPolicyName,
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
 		})
 	})
 	Describe("Test specified clusterrole", Ordered, func() {
@@ -91,16 +109,37 @@ var _ = Describe("Test IAM policy", func() {
 
 		It("Should be created on the cluster", func() {
 			CreateIAMPolicyWithParent(otherPolicyYaml, otherPolicyName, otherIAMPolicyYaml)
-			Kubectl("apply", "-f", otherRoleYaml, "-n", testNamespace)
+			Kubectl("apply", "-f", otherRoleYaml, "-n", testNamespace, "--kubeconfig", kubeconfigManaged)
 		})
 		complianceTests(otherIAMPolicyName, otherPolicyName, otherCRBYaml, "at least 10 above")
 		AfterAll(func() {
-			Kubectl("delete", "-f", otherCRBYaml, "--ignore-not-found", "-n", testNamespace)
-			Kubectl("delete", "-f", otherIAMPolicyYaml, "--ignore-not-found", "-n", testNamespace)
-			Kubectl("delete", "-f", otherRoleYaml, "--ignore-not-found", "-n", testNamespace)
-			Kubectl("delete", "-f", otherPolicyYaml, "--ignore-not-found", "-n", testNamespace)
-			Kubectl("delete", "event", "--field-selector=involvedObject.name="+otherPolicyName, "-n", testNamespace)
-			Kubectl("delete", "event", "--field-selector=involvedObject.name="+otherIAMPolicyName, "-n", testNamespace)
+			Kubectl("delete",
+				"-f", otherCRBYaml,
+				"--ignore-not-found",
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
+			Kubectl("delete",
+				"-f", otherIAMPolicyYaml,
+				"--ignore-not-found",
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
+			Kubectl("delete",
+				"-f", otherRoleYaml,
+				"--ignore-not-found",
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
+			Kubectl("delete",
+				"-f", otherPolicyYaml,
+				"--ignore-not-found",
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
+			Kubectl("delete", "event",
+				"--field-selector=involvedObject.name="+otherPolicyName,
+				"-n", testNamespace, "--kubeconfig", kubeconfigManaged)
+			Kubectl("delete", "event",
+				"--field-selector=involvedObject.name="+otherIAMPolicyName,
+				"-n", testNamespace,
+				"--kubeconfig", kubeconfigManaged)
 		})
 	})
 })

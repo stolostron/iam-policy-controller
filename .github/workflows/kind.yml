@@ -13,7 +13,6 @@ on:
 defaults:
   run:
     shell: bash
-    working-directory: iam-policy-controller
 
 jobs:
   kind-tests:
@@ -33,14 +32,11 @@ jobs:
     steps:
     - name: Checkout IAM Policy Controller
       uses: actions/checkout@v4
-      with:
-        path: iam-policy-controller
-        fetch-depth: 0 # Fetch all history for all tags and branches
 
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version-file: iam-policy-controller/go.mod
+        go-version-file: go.mod
 
     - name: Verify modules
       run: |
@@ -108,9 +104,9 @@ jobs:
       with:
         name: artifacts
         path: |
-          iam-policy-controller/coverage*.out
-          iam-policy-controller/event.json
-          iam-policy-controller/gosec.json
+          coverage*.out
+          event.json
+          gosec.json
 
     - name: Debug
       if: ${{ failure() }}

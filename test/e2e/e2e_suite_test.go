@@ -47,8 +47,8 @@ func TestE2e(t *testing.T) {
 func init() {
 	klog.SetOutput(GinkgoWriter)
 	klog.InitFlags(nil)
-	flag.StringVar(&kubeconfigManaged, "kubeconfig_managed", "../../kubeconfig_managed",
-		"Location of the kubeconfig to use; defaults to KUBECONFIG if not set")
+	flag.StringVar(&kubeconfigManaged, "kubeconfig_managed", "../../kubeconfig_managed_e2e",
+		"Location of the kubeconfig to use; defaults to current kubeconfig if set to an empty string")
 }
 
 var _ = BeforeSuite(func() {
@@ -201,7 +201,7 @@ func GetWithTimeout(
 
 func CreateIAMPolicyWithParent(parentPolicyYAML, parentPolicyName, iamPolicyYAML string) {
 	By("Creating the parent policy")
-	Kubectl("apply", "-f", parentPolicyYAML, "-n", testNamespace)
+	Kubectl("apply", "-f", parentPolicyYAML, "-n", testNamespace, "--kubeconfig", kubeconfigManaged)
 	parent := GetWithTimeout(gvrPolicy, parentPolicyName, testNamespace, true)
 	Expect(parent).NotTo(BeNil())
 

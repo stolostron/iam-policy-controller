@@ -24,13 +24,14 @@ var _ = Describe("Test an alternative kubeconfig for policy evaluation", Ordered
 	)
 
 	var targetK8sClient *kubernetes.Clientset
+	var altKubeconfigPath string
 
 	BeforeAll(func() {
 		By("Checking that the " + envName + " environment variable is valid")
-		altKubeconfigPath := os.Getenv(envName)
+		altKubeconfigPath = os.Getenv(envName)
 		Expect(altKubeconfigPath).ToNot(Equal(""))
 
-		targetK8sConfig, err := clientcmd.BuildConfigFromFlags("", altKubeconfigPath)
+		targetK8sConfig, err := clientcmd.BuildConfigFromFlags("", altKubeconfigPath+"_e2e")
 		Expect(err).ToNot(HaveOccurred())
 
 		targetK8sClient, err = kubernetes.NewForConfig(targetK8sConfig)
@@ -54,7 +55,7 @@ var _ = Describe("Test an alternative kubeconfig for policy evaluation", Ordered
 
 	It("should verify compliance on alternative kubeconfig", func() {
 		By("Creating the Policy on hosting cluster")
-		Kubectl("apply", "-f", policyYAML, "-n", testNamespace)
+		Kubectl("apply", "-f", policyYAML, "-n", testNamespace, "--kubeconfig", kubeconfigManaged)
 		pol := GetWithTimeout(gvrIamPolicy, policyName, testNamespace, true)
 		Expect(pol).NotTo(BeNil())
 

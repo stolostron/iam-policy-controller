@@ -84,5 +84,5 @@ replace (
 	k8s.io/api => k8s.io/api v0.26.10 // Replaced so that 'go get -u' works. Remove/bump when upgrading.
 	k8s.io/client-go => k8s.io/client-go v0.26.10 // Replaced so that 'go get -u' works. Remove/bump when upgrading.
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // Replaced so that 'go get -u' works. Remove/bump when upgrading.
-	open-cluster-management.io/governance-policy-propagator => github.com/stolostron/governance-policy-propagator v0.0.0-20231024184723-1448ed6cfff1
+	open-cluster-management.io/governance-policy-propagator => github.com/stolostron/governance-policy-propagator 9680957d2903
 )

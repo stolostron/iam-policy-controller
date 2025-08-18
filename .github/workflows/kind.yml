@@ -32,7 +32,7 @@ jobs:
     name: KinD tests
     steps:
     - name: Checkout IAM Policy Controller
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         path: iam-policy-controller
         fetch-depth: 0 # Fetch all history for all tags and branches
